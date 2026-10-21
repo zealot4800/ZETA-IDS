@@ -1,1 +1,1 @@
-"""ZETA-IDS progressive traffic simulation."""
+"""ZETA-IDS experiments."""

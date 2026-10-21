@@ -1,6 +1,6 @@
-__pycache__/
-.venv/
+data/*
+.venv/*
+extra/*
 .env
-data/**/*.pkl
-state/
-artifacts/*
+__pycache__/
+results/

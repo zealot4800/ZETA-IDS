@@ -1,0 +1,122 @@
+seed: 17
+split: {train: 0.70, validation: 0.15, test: 0.15}
+partition_buckets: 10000
+source_validation:
+  certification_salt: 104729
+  conditional_certification_salt: 65537
+  conditional_proxy_salt: 131071
+  conditional_proxy_train_fraction: 0.80
+diagnostics:
+  top_deviation_features: 5
+tree: {max_depth: 6, max_leaf_nodes: 32, min_samples_leaf: 100}
+regions: {benign_quantile: 0.95, distance_cap: 10.0, min_train_benign: 30}
+safe_regions:
+  quantiles: [0.50, 0.70, 0.85, 0.95]
+  top_features: 4
+  known_attack_leakage_budget: 0.001
+  certification_fraction: 0.50
+  max_training_attack_overlap: 0
+membership:
+  prototypes_per_region: 256
+  neighbours: 3
+  radius_quantiles: [0.50, 0.70, 0.85, 0.95]
+  min_benign_retention: 0.70
+  min_proxy_support: 30
+conditional:
+  cut_quantiles: [0.05, 0.50, 0.95]
+  min_feature_entropy: 0.50
+  min_joint_information: 0.15
+  max_pair_features: 16
+  min_source_region_support: 100
+  min_tuning_cell_support: 10
+  max_subregions_per_region: 8
+  min_train_cell_support_candidates: [60, 120, 240]
+  min_benign_retention: 0.80
+  min_proxy_support: 30
+calibration:
+  min_validation_support: 30
+  confidence: 0.95
+  max_attack_leaf_benign_share: 0.10
+  max_benign_region_attack_share: 0.10
+expected_attacks:
+  cicids2018: [DDoS, DoS Hulk, DoS GoldenEye, DoS Slow, Brute Force, Port Scanning, Infiltration, Botnet, Web Attack]
+  ton_iot: [backdoor, ddos, dos, injection, mitm, password, ransomware, scanning, xss]
+  unsw_nb15: [Analysis, Backdoor, DoS, Exploits, Fuzzers, Generic, Reconnaissance, Shellcode, Worms]
+  kdd: [DoS, Probe, R2L, U2R]
+datasets:
+  cicids2018:
+    path: data/CICIDS2018.pkl
+    family_column: mapped_label
+    class_id_column: mapped_class_id
+    binary_column: binary_label
+    benign_value: BENIGN
+    feature_source: metadata
+    exclude: []
+    categorical: []
+  unsw_nb15:
+    path: data/UNSW_NB15.pkl
+    official_split:
+      id_column: id
+      reset_index: 175341
+      start_id: 1
+      train_fraction: 0.82
+      description: UNSW id-reset train/test; group-disjoint train/validation
+    family_column: attack_cat
+    binary_column: label
+    benign_value: Normal
+    feature_source: columns
+    exclude: [id]
+    categorical: [proto, service, state]
+  ton_iot:
+    path: data/TON-IOT.pkl
+    family_column: type
+    binary_column: label
+    benign_value: normal
+    feature_source: columns
+    exclude: [ts, src_ip, dst_ip, dns_query, ssl_subject, ssl_issuer,
+              http_uri, http_referrer, http_user_agent, http_orig_mime_types,
+              http_resp_mime_types, weird_addl]
+    categorical: [proto, service, conn_state, dns_AA, dns_RD, dns_RA,
+                  dns_rejected, ssl_version, ssl_cipher, ssl_resumed,
+                  ssl_established, http_method, http_version, weird_name,
+                  weird_notice]
+  kdd:
+    path: data/KDD.pkl
+    row_selection:
+      column: split
+      include: train
+      expected_values: [train, test]
+      expected_included_rows: 125973
+      expected_excluded_rows: 22544
+      description: KDD train rows with detailed attack labels
+    family_column: original_label
+    binary_column: label
+    benign_value: normal
+    feature_source: metadata
+    exclude: [difficulty, split]
+    categorical: [protocol_type, service, flag]
+    # Original KDD attack taxonomy: https://kdd.ics.uci.edu/databases/kddcup99/training_attack_types
+    family_map:
+      normal: normal
+      back: DoS
+      land: DoS
+      neptune: DoS
+      pod: DoS
+      smurf: DoS
+      teardrop: DoS
+      ipsweep: Probe
+      nmap: Probe
+      portsweep: Probe
+      satan: Probe
+      ftp_write: R2L
+      guess_passwd: R2L
+      imap: R2L
+      multihop: R2L
+      phf: R2L
+      spy: R2L
+      warezclient: R2L
+      warezmaster: R2L
+      buffer_overflow: U2R
+      loadmodule: U2R
+      perl: U2R
+      rootkit: U2R
