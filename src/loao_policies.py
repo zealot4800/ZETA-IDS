@@ -12,7 +12,7 @@ from sklearn.metrics import mutual_info_score
 from .loao_data import _partitions
 from .loao_model import (
     _build_membership, _fit_model, _fit_safe_model, _membership_distances,
-    _membership_pass, _score, _split_validation,
+    _membership_pass, _region_distances, _score, _split_validation,
 )
 
 
@@ -341,6 +341,51 @@ def _select_conditional(data: dict, cfg: dict, outer_attack: str,
         "supported_proxies": [r["proxy"] for r in supported]}, time.perf_counter() - start
 
 
+def _benign_region_scores(model: dict, x: pd.DataFrame,
+                          leaves: np.ndarray) -> np.ndarray:
+    """Lower scores are closer to the center of a certified benign region."""
+    scores = np.full(len(x), np.inf)
+    numbers = model["preprocessor"].named_transformers_["numeric"].transform(
+        x[model["numeric"]])
+    for leaf, (median, scale, threshold) in model["regions"].items():
+        positions = np.flatnonzero(leaves == leaf)
+        if len(positions):
+            distances = _region_distances(model, numbers[positions], median, scale)
+            scores[positions] = distances / max(threshold, np.finfo(float).tiny)
+    return scores
+
+
+def _cap_benign_acceptance(model: dict, data: dict,
+                           calibration: np.ndarray, max_fraction: float) -> tuple[dict, dict]:
+    """Set a source-only cutoff that accepts at most the requested benign share."""
+    if not 0 <= max_fraction <= 1:
+        raise ValueError("benign_acceptance.max_fraction must be in [0, 1]")
+    x = data["x"].loc[calibration]
+    benign = data["y"][calibration] == 0
+    count = int(benign.sum())
+    if not count:
+        raise ValueError("Benign acceptance calibration needs benign source flows")
+    decisions, _, _, leaves, _, _, _ = _predict(model, x)
+    accepted = benign & (decisions == "BENIGN")
+    scores = np.sort(_benign_region_scores(model, x, leaves)[accepted])
+    allowance = int(np.floor(max_fraction * count))
+    if len(scores) <= allowance:
+        cutoff = np.inf
+    elif allowance == 0:
+        cutoff = -np.inf
+    else:
+        cutoff = scores[allowance - 1]
+        if np.searchsorted(scores, cutoff, side="right") > allowance:
+            cutoff = np.nextafter(cutoff, -np.inf)
+    retained = int(np.searchsorted(scores, cutoff, side="right"))
+    return ({**model, "benign_acceptance_max_score": float(cutoff)},
+            {"source_benign_count": count,
+             "source_benign_accepted_before": int(accepted.sum()),
+             "source_benign_accepted_after": retained,
+             "source_benign_acceptance_pct": 100 * retained / count,
+             "target_benign_acceptance_pct": 100 * max_fraction})
+
+
 def _predict(model: dict, x: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, float,
                                                    np.ndarray, np.ndarray, np.ndarray,
                                                    np.ndarray]:
@@ -350,6 +395,9 @@ def _predict(model: dict, x: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, floa
     membership_pass = _membership_pass(model, x, leaves, inside)
     benign = (inside & membership_pass & _conditional_pass(model, x, leaves) &
               np.isin(leaves, list(model["benign_rules"])))
+    if "benign_acceptance_max_score" in model and benign.any():
+        benign &= (_benign_region_scores(model, x, leaves) <=
+                   model["benign_acceptance_max_score"])
     decisions = np.full(len(x), "UNRESOLVED", dtype="<U12")
     decisions[attack & ~benign] = "KNOWN_ATTACK"
     decisions[benign & ~attack] = "BENIGN"

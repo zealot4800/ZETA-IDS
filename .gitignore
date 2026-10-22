@@ -2,5 +2,7 @@ data/*
 .venv/*
 extra/*
 .env
+*.pdf
+*.zip
 __pycache__/
 results/

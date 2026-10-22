@@ -59,9 +59,11 @@ def _partitions(x: pd.DataFrame, seed: int, fractions: dict,
     return h, part
 
 
-def _read_dataset(name: str, spec: dict, cfg: dict, root: Path) -> dict:
+def _read_dataset(name: str, spec: dict, cfg: dict, root: Path,
+                  include_raw: bool = False) -> dict:
     frame = pd.read_pickle(root / spec["path"])
     source_rows = len(frame)
+    row_positions = np.arange(source_rows)
     selection = spec.get("row_selection")
     if selection is not None:
         column = selection["column"]
@@ -71,7 +73,9 @@ def _read_dataset(name: str, spec: dict, cfg: dict, root: Path) -> dict:
         expected_values = set(selection["expected_values"])
         if values != expected_values:
             raise ValueError(f"{name}: source split values differ: {values} != {expected_values}")
-        frame = frame.loc[frame[column] == selection["include"]]
+        selected = frame[column] == selection["include"]
+        row_positions = row_positions[selected.to_numpy()]
+        frame = frame.loc[selected]
         if (len(frame) != selection["expected_included_rows"] or
                 source_rows - len(frame) != selection["expected_excluded_rows"]):
             raise ValueError(f"{name}: source split row counts differ from config")
@@ -148,6 +152,8 @@ def _read_dataset(name: str, spec: dict, cfg: dict, root: Path) -> dict:
         if not np.any(test & (family == attack)):
             raise ValueError(f"{name}: fixed test partition lacks {attack}")
     return {"name": name, "x": x, "family": family, "y": y,
+            "raw_x": frame[features].copy() if include_raw else None,
+            "row_positions": row_positions,
             "source_rows": source_rows, "source_rows_excluded": excluded_rows,
             "source_selection": selection["description"] if selection else "all rows",
             "original_label": original, "original_counts": original_counts,

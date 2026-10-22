@@ -2,22 +2,28 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+import hashlib
+from importlib.metadata import PackageNotFoundError, version
 import json
 import math
 import resource
+import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import yaml
+from sklearn.metrics import average_precision_score, roc_auc_score
 
 from .loao_data import _read_dataset
 from .loao_model import (
     _build_membership, _fit_model, _fit_safe_model, _split_validation, _wilson_upper,
 )
 from .loao_policies import (
-    _conditional_pass, _conditional_profiles, _predict, _select_conditional,
+    _benign_region_scores, _cap_benign_acceptance, _conditional_pass,
+    _conditional_profiles, _predict, _select_conditional,
     _select_membership, _with_conditional,
 )
 
@@ -58,7 +64,12 @@ def _overlap_diagnostics(data: dict, cfg: dict, model: dict, x_test: pd.DataFram
                          conditional_pass: np.ndarray) -> dict:
     attack_evidence = np.isin(leaves, list(model["attack_rules"]))
     region_evidence = inside & np.isin(leaves, list(model["benign_rules"]))
-    benign_evidence = region_evidence & membership_pass & conditional_pass
+    before_cap = region_evidence & membership_pass & conditional_pass
+    cap_pass = np.ones(len(leaves), dtype=bool)
+    if "benign_acceptance_max_score" in model:
+        cap_pass = (_benign_region_scores(model, x_test, leaves) <=
+                    model["benign_acceptance_max_score"])
+    benign_evidence = before_cap & cap_pass
     raw = unknown_mask & raw_inside
     certified = unknown_mask & benign_evidence
     groups = {}
@@ -126,6 +137,10 @@ def _overlap_diagnostics(data: dict, cfg: dict, model: dict, x_test: pd.DataFram
                 unknown_mask & region_evidence & membership_pass & conditional_pass) / n if n else math.nan,
             "conditional_rejected_unknown": int(np.sum(
                 unknown_mask & region_evidence & membership_pass & ~conditional_pass)),
+            "acceptance_cap_rejected_unknown": int(np.sum(
+                unknown_mask & before_cap & ~cap_pass)),
+            "acceptance_cap_rejected_benign": int(np.sum(
+                benign_mask & before_cap & ~cap_pass)),
             "certified_benign_overlap": int(certified.sum()),
             "certified_benign_overlap_pct": 100 * certified.sum() / n if n else math.nan,
             "overlapping_benign_regions": len(records),
@@ -136,12 +151,12 @@ def _overlap_diagnostics(data: dict, cfg: dict, model: dict, x_test: pd.DataFram
 
 def _evaluate_model(data: dict, cfg: dict, excluded: str, model: dict,
                     train: np.ndarray, tuning: np.ndarray, certification: np.ndarray,
-                    train_seconds: float) -> dict:
+                    train_seconds: float, prediction: tuple | None = None) -> dict:
     family, y = data["family"], data["y"]
     test = data["test"]
     x_test = data["x"].loc[test]
     (decisions, known_prediction, infer_seconds, leaves, inside, raw_inside,
-     membership_pass) = _predict(model, x_test)
+     membership_pass) = _predict(model, x_test) if prediction is None else prediction
     conditional_pass = _conditional_pass(model, x_test, leaves)
     truth = family[test]
     test_y = y[test]
@@ -256,7 +271,8 @@ def _evaluate_model(data: dict, cfg: dict, excluded: str, model: dict,
     return row
 
 
-def _evaluate_conditional_fold(data: dict, cfg: dict, excluded: str) -> dict:
+def fit_fold(data: dict, cfg: dict, excluded: str) -> tuple[dict, dict]:
+    """Build the existing first-layer fold once; downstream users only read its model."""
     family, y = data["family"], data["y"]
     train = data["train"] & (family != excluded)
     validation = data["validation"] & (family != excluded)
@@ -272,12 +288,11 @@ def _evaluate_conditional_fold(data: dict, cfg: dict, excluded: str) -> dict:
     conditional_start = time.perf_counter()
     profiles = _conditional_profiles(data, refined, train, tuning, cfg)
     candidate = _with_conditional(refined, profiles, selected, cfg)
+    candidate, cap_audit = _cap_benign_acceptance(
+        candidate, data, certification, cfg["benign_acceptance"]["max_fraction"])
     fit_seconds = time.perf_counter() - conditional_start
     total_training_seconds = (base_seconds + safe_seconds + proxy_seconds +
                               membership_seconds + selection_seconds + fit_seconds)
-    row = _evaluate_model(
-        data, cfg, excluded, candidate, train, tuning, certification,
-        total_training_seconds)
     cert_decisions = _predict(candidate, data["x"].loc[certification])[0]
     cert_attack = y[certification] == 1
     cert_errors = int(np.sum((cert_decisions == "BENIGN") & cert_attack))
@@ -320,7 +335,8 @@ def _evaluate_conditional_fold(data: dict, cfg: dict, excluded: str) -> dict:
                 "tune_benign": int(counts["tune_benign"][cell]),
                 "tune_attack": int(counts["tune_attack"][cell])}
                 for cell in range(profile["cell_count"])]})
-    row.update({
+    metrics = {
+        **cap_audit,
         "proxy_status": proxy_audit["status"],
         "proxy_selected_quantile": quantile,
         "proxy_worst_uabr_pct": proxy_audit["chosen"]["worst_proxy_uabr_pct"],
@@ -340,13 +356,25 @@ def _evaluate_conditional_fold(data: dict, cfg: dict, excluded: str) -> dict:
         "conditional_proxy_audit_json": json.dumps(conditional_audit, sort_keys=True),
         "conditional_region_audit_json": json.dumps(region_audit, sort_keys=True),
         "source_cert_final_attack_bypassed": cert_errors,
-        "source_cert_final_attack_leakage_upper_pct": 100 * cert_upper})
+        "source_cert_final_attack_leakage_upper_pct": 100 * cert_upper}
+    return candidate, {"train": train, "validation": validation, "tuning": tuning,
+                       "certification": certification, "training_seconds": total_training_seconds,
+                       "metrics": metrics}
+
+
+def _evaluate_conditional_fold(data: dict, cfg: dict, excluded: str) -> dict:
+    model, fold = fit_fold(data, cfg, excluded)
+    row = _evaluate_model(data, cfg, excluded, model, fold["train"], fold["tuning"],
+                          fold["certification"], fold["training_seconds"])
+    row.update(fold["metrics"])
     return row
 
 
 def run(config_path: Path, dataset: str | None = None,
-        attack: str | None = None) -> dict[str, list[dict]]:
-    """Print conditional-policy LOAO results without saving reports."""
+        attack: str | None = None, method: str | None = None) -> dict[str, list[dict]]:
+    """Keep the original terminal workflow; explicit methods use shared comparison."""
+    if method is not None:
+        return _run_comparison(config_path, dataset, attack, method)
     with config_path.open() as stream:
         cfg = yaml.safe_load(stream)
     root = config_path.resolve().parent.parent
@@ -377,6 +405,7 @@ def run(config_path: Path, dataset: str | None = None,
                   f"attack {row['unknown_to_known_attack']}; "
                   f"unresolved {row['unknown_to_unresolved']}; "
                   f"benign acceptance {row['benign_acceptance_pct']:.2f}%; "
+                  f"source cap {row['target_benign_acceptance_pct']:.2f}%; "
                   f"known recall {row['known_attack_recall_pct']:.2f}%; "
                   f"policy {row['conditional_status']}", flush=True)
             if "unknown_by_original_label_json" in row:
@@ -385,4 +414,264 @@ def run(config_path: Path, dataset: str | None = None,
                           f"({details['benign_pct']:.2f}%); distinct patterns "
                           f"{details['distinct_benign']}/{details['distinct_count']}",
                           flush=True)
+    return completed
+
+
+def _comparison_metrics(data: dict, excluded: str, positions: np.ndarray, result: dict,
+                        training_seconds: float, inference_seconds: float, cfg: dict) -> dict:
+    """Identical attack-only binary novelty evaluation for either native method."""
+    truth = data["family"][positions]
+    if not np.all(data["y"][positions] == 1):
+        raise ValueError("Primary novelty metrics require attack-only rows")
+    positive = truth == excluded
+    candidate = np.isin(result["decisions"], ("UNRESOLVED", "ZERO_DAY_CANDIDATE"))
+    tp, fp = int(np.sum(candidate & positive)), int(np.sum(candidate & ~positive))
+    fn, tn = int(np.sum(~candidate & positive)), int(np.sum(~candidate & ~positive))
+    zero = cfg["comparison"]["metric_zero_division"]
+    precision = tp / (tp + fp) if tp + fp else zero
+    recall = tp / (tp + fn) if tp + fn else None
+    f1 = 2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else zero
+    known_count = int((~positive).sum())
+    correct = result["known_family"] == truth
+    score = result["score"]
+    has_score = score is not None and len(np.unique(positive)) == 2
+    if score is not None and (np.shape(score) != positive.shape or not np.isfinite(score).all()):
+        raise ValueError("Novelty scores must be finite and aligned with the shared test rows")
+    return {"primary_attack_rows": len(positions), "withheld_attack_rows": int(positive.sum()),
+            "known_attack_rows": known_count, "zero_day_tp": tp, "zero_day_fp": fp,
+            "zero_day_fn": fn, "zero_day_tn": tn, "candidate_count": int(candidate.sum()),
+            "zero_day_precision_pct": 100 * precision,
+            "zero_day_recall_pct": None if recall is None else 100 * recall,
+            "zero_day_f1_pct": 100 * f1,
+            "auroc": float(roc_auc_score(positive, score)) if has_score else None,
+            "auprc_average_precision": float(average_precision_score(positive, score)) if has_score else None,
+            "known_attack_false_novelty_pct": 100 * fp / known_count if known_count else None,
+            "known_attack_classification_accuracy_pct": 100 * float(np.mean(correct[~positive])) if known_count else None,
+            "known_attack_correctly_routed_pct": 100 * float(np.mean(
+                (correct & (result["decisions"] == "KNOWN_ATTACK"))[~positive])) if known_count else None,
+            "fit_wall_seconds": training_seconds, "primary_inference_seconds": inference_seconds,
+            "primary_latency_ms_per_flow": 1000 * inference_seconds / len(positions),
+            "primary_throughput_flows_per_second": len(positions) / inference_seconds if inference_seconds > 0 else None,
+            "process_peak_rss_mb_cumulative": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+                if cfg["comparison"]["measure_memory"] else None}
+
+
+def _limit_rows(data: dict, excluded: str, cfg: dict) -> dict:
+    """Optional reproducible subsets; never move a row across an existing partition."""
+    limited = dict(data)
+    for split in ("train", "validation", "test"):
+        mask = data[split].copy()
+        if split != "test":
+            mask &= data["family"] != excluded
+        limit = cfg["comparison"][split + "_row_limit"]
+        if limit is not None:
+            if type(limit) is not int or limit < 1:
+                raise ValueError("Comparison row limits must be positive integers or null")
+            positions = np.flatnonzero(mask)
+            if len(positions) > limit:
+                rng = np.random.default_rng(cfg["comparison"]["sampling_seed"])
+                shuffled = rng.permutation(positions)
+                if split == "test":
+                    keep = shuffled[:limit]  # Test selection does not inspect family labels.
+                else:
+                    _, first = np.unique(data["family"][shuffled], return_index=True)
+                    if len(first) > limit:
+                        raise ValueError("Source row limit is too small to retain every permitted class")
+                    required = shuffled[first]
+                    keep = np.r_[required, shuffled[~np.isin(shuffled, required)][:limit - len(required)]]
+                mask[:] = False
+                mask[keep] = True
+        limited[split] = mask
+    return limited
+
+
+def _zeta_comparison(data: dict, cfg: dict, excluded: str, positions: np.ndarray) -> tuple[dict, dict, dict]:
+    start = time.perf_counter()
+    model, fold = fit_fold(data, cfg, excluded)
+    train_seconds = time.perf_counter() - start
+    start = time.perf_counter()
+    attack_prediction = _predict(model, data["x"].iloc[positions])
+    inference_seconds = time.perf_counter() - start
+    result = {"decisions": attack_prediction[0], "known_family": attack_prediction[1], "score": None}
+    metrics = _comparison_metrics(data, excluded, positions, result, train_seconds, inference_seconds, cfg)
+    # Evaluate benign rows separately, then reuse the original full-traffic metrics.
+    test_positions = np.flatnonzero(data["test"])
+    is_attack = data["y"][test_positions] == 1
+    combined = [np.empty(len(test_positions), dtype=value.dtype) if i != 2 else attack_prediction[2]
+                for i, value in enumerate(attack_prediction)]
+    for i in range(len(combined)):
+        if i != 2:
+            combined[i][is_attack] = attack_prediction[i]
+    if np.any(~is_attack):
+        benign_prediction = _predict(model, data["x"].iloc[test_positions[~is_attack]])
+        for i in range(len(combined)):
+            if i == 2:
+                combined[i] += benign_prediction[i]
+            else:
+                combined[i][~is_attack] = benign_prediction[i]
+    original = _evaluate_model(data, cfg, excluded, model, fold["train"], fold["tuning"],
+                               fold["certification"], fold["training_seconds"], prediction=tuple(combined))
+    original.update(fold["metrics"])
+    original.update(metrics)
+    result.update(all_positions=test_positions, all_decisions=combined[0], all_known_family=combined[1])
+    metadata = {"reproduction_status": "original_zeta_unchanged", "class_mapping": {
+        str(label): i for i, label in enumerate(model["tree"].classes_)}}
+    return result, original, metadata
+
+
+def _json_value(value):
+    if isinstance(value, dict):
+        return {str(k): _json_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, np.ndarray)):
+        return [_json_value(v) for v in value]
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value
+
+
+def _split_metadata(data: dict) -> dict:
+    return {split: {"rows": int(data[split].sum()), "row_positions_sha256": hashlib.sha256(
+        np.asarray(data["row_positions"][data[split]], dtype="<i8").tobytes()).hexdigest()}
+        for split in ("train", "validation", "test")}
+
+
+def _comparison_table(records: list[dict], cfg: dict) -> list[dict]:
+    table = {}
+    for row in records:
+        key = (row["dataset"], row["heldout_attack"])
+        item = table.setdefault(key, {"Dataset": key[0], "Withheld Attack": key[1]})
+        label = "ZETA-IDS" if row["method"] == "zeta" else "Paper"
+        for metric, title in (("zero_day_recall_pct", "Zero-Day Recall (%)"),
+                              ("zero_day_f1_pct", "F1 (%)"), ("primary_latency_ms_per_flow", "Latency (ms/flow)")):
+            item[f"{label} {title}"] = row[metric]
+    columns = ["Dataset", "Withheld Attack", "ZETA-IDS Zero-Day Recall (%)", "Paper Zero-Day Recall (%)",
+               "ZETA-IDS F1 (%)", "Paper F1 (%)", "ZETA-IDS Latency (ms/flow)", "Paper Latency (ms/flow)"]
+    result = [{column: row.get(column) for column in columns} for row in table.values()]
+    if cfg["comparison"]["print_table"] and result:
+        print(pd.DataFrame(result).to_string(index=False, na_rep="N/A", float_format=lambda v:
+              f"{v:.{cfg['comparison']['percentage_decimals']}f}"), flush=True)
+    return result
+
+
+def _run_comparison(config_path: Path, dataset: str | None, attack: str | None,
+                    method: str) -> dict[str, list[dict]]:
+    cfg = yaml.safe_load(config_path.read_text())
+    options = cfg["comparison"]
+    if method not in ("zeta", "paper", "both") or set(options["methods"]) != {"zeta", "paper"} or len(options["methods"]) != 2:
+        raise ValueError("Comparison has exactly two methods: zeta and paper")
+    if options["metric_zero_division"] not in (0, 1):
+        raise ValueError("metric_zero_division must be 0 or 1")
+    methods = options["methods"] if method == "both" else [method]
+    if "paper" in methods:
+        from . import paper
+        paper.validate_config(cfg)
+    root = config_path.resolve().parent.parent
+    datasets = [dataset] if dataset else options["datasets"]
+    if not datasets or len(datasets) != len(set(datasets)) or any(name not in cfg["datasets"] for name in datasets):
+        raise ValueError("Select nonempty, unique configured comparison datasets")
+    if attack is not None and len(datasets) != 1:
+        raise ValueError("--attack requires one selected dataset")
+    selected = {}
+    for name in datasets:
+        families = [attack] if attack is not None else options["attacks"].get(name, cfg["expected_attacks"][name])
+        if not families or len(families) != len(set(families)) or not set(families) <= set(cfg["expected_attacks"][name]):
+            raise ValueError(f"Invalid withheld attack selection for {name}")
+        selected[name] = families
+    output = None
+    if options["save_results"]:
+        output = root / options["output_directory"] / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+        output.mkdir(parents=True, exist_ok=False)
+        filenames = list(options["filenames"].values())
+        if len(filenames) != len(set(filenames)) or any(Path(name).name != name for name in filenames):
+            raise ValueError("Comparison filenames must be unique simple filenames")
+    packages = ("numpy", "pandas", "scikit-learn", "scipy", "shap", "tensorflow-cpu", "xgboost-cpu")
+    versions = {}
+    for package in packages:
+        try:
+            versions[package] = version(package)
+        except PackageNotFoundError:
+            versions[package] = None
+    metadata = {"status": "running", "configurations": cfg, "methods": methods,
+                "python": sys.version, "packages": versions, "datasets": {}, "folds": [],
+                "metric_definitions": {
+                    "population": "Identical attack-only frozen test rows; withheld family is positive.",
+                    "candidate": "ZETA UNRESOLVED or paper ZERO_DAY_CANDIDATE. UNRESOLVED does not establish maliciousness or novelty.",
+                    "precision": "TP / all primary candidates", "recall": "TP / all held-out attack test rows",
+                    "f1": "2 TP / (2 TP + FP + FN); positive-class F1, not the paper's macro F1",
+                    "auprc_average_precision": "Noninterpolated average precision; no fabricated ZETA novelty score.",
+                    "known_false_novelty": "Known attacks marked candidates / all known attack test rows",
+                    "known_classification_accuracy": "Underlying multiclass prediction correct / all known attack test rows, irrespective of final routing",
+                    "known_correctly_routed": "Correct family AND KNOWN_ATTACK / all known attack test rows",
+                    "benign_and_bypass": "ZETA original full-traffic metrics; denominators are benign, known-attack or held-out attack counts as named",
+                    "timing": "Primary attack-only batch inference, including preprocessing; excludes reporting and supplemental benign inference",
+                    "memory": "Cumulative process peak RSS, not isolated per-method memory"}}
+    records, completed = [], {}
+    try:
+        for name, families in selected.items():
+            data = _read_dataset(name, cfg["datasets"][name], cfg, root)
+            with (root / cfg["datasets"][name]["path"]).open("rb") as stream:
+                data_hash = hashlib.file_digest(stream, "sha256").hexdigest()
+            metadata["datasets"][name] = {"path": cfg["datasets"][name]["path"], "sha256": data_hash,
+                "source_rows": data["source_rows"], "source_rows_excluded": data["source_rows_excluded"],
+                "source_selection": data["source_selection"], "split_strategy": data["strategy"],
+                "splits": _split_metadata(data), "feature_schema": {column: str(dtype) for column, dtype in data["x"].dtypes.items()},
+                "numeric": data["numeric"], "categorical": data["categorical"], "attack_families": cfg["expected_attacks"][name],
+                "family_map": cfg["datasets"][name].get("family_map")}
+            completed[name] = []
+            for excluded in families:
+                fold_data = _limit_rows(data, excluded, cfg)
+                positions = np.flatnonzero(fold_data["test"] & (fold_data["y"] == 1))
+                truth = fold_data["family"][positions]
+                if not np.any(truth == excluded) or not np.any(truth != excluded):
+                    raise ValueError("Comparison needs held-out and known attack test rows; increase test_row_limit")
+                split_info = _split_metadata(fold_data)
+                for selected_method in methods:
+                    if selected_method == "zeta":
+                        result, row, method_meta = _zeta_comparison(fold_data, cfg, excluded, positions)
+                    else:
+                        start = time.perf_counter()
+                        model = paper.fit(fold_data, fold_data["train"], fold_data["validation"], excluded, cfg)
+                        training = time.perf_counter() - start
+                        start = time.perf_counter()
+                        result = paper.predict(model, fold_data["x"].iloc[positions])
+                        seconds = time.perf_counter() - start
+                        row = _comparison_metrics(fold_data, excluded, positions, result, training, seconds, cfg)
+                        method_meta = model["metadata"]
+                        del model
+                    row.update(dataset=name, heldout_attack=excluded, method=selected_method,
+                               reproduction_status=method_meta["reproduction_status"])
+                    records.append(row)
+                    completed[name].append(row)
+                    metadata["folds"].append({"dataset": name, "heldout_attack": excluded, "method": selected_method,
+                        "splits": split_info, "primary_test_rows_sha256": hashlib.sha256(
+                            np.asarray(data["row_positions"][positions], dtype="<i8").tobytes()).hexdigest(), **method_meta})
+                    if output:
+                        exported = result.get("all_positions", positions)
+                        predictions = pd.DataFrame({"dataset": name, "heldout_attack": excluded, "method": selected_method,
+                            "row_position": data["row_positions"][exported], "split": "test",
+                            "test_split_id": split_info["test"]["row_positions_sha256"],
+                            "primary_attack_population": data["y"][exported] == 1, "true_family": data["family"][exported],
+                            "is_heldout_attack": data["family"][exported] == excluded,
+                            "decision": result.get("all_decisions", result["decisions"]),
+                            "predicted_known_family": result.get("all_known_family", result["known_family"])})
+                        for key in ("score", "reconstruction_error", "epistemic_uncertainty"):
+                            predictions[key] = result.get(key) if selected_method == "paper" else None
+                        predictions["novelty_threshold"] = method_meta.get("novelty_threshold")
+                        target = output / options["filenames"]["predictions"]
+                        predictions.to_csv(target, mode="a", header=not target.exists(), index=False)
+                        pd.DataFrame(_json_value(records)).to_csv(output / options["filenames"]["metrics"], index=False)
+        metadata["status"] = "complete"
+    except Exception as exc:
+        metadata.update(status="failed", error=f"{type(exc).__name__}: {exc}")
+        raise
+    finally:
+        table = _comparison_table(records, cfg)
+        if output:
+            summary = {"status": metadata["status"], "output_directory": str(output),
+                       "completed_method_folds": len(records), "comparison_table": table, "metrics": records}
+            (output / options["filenames"]["summary"]).write_text(json.dumps(_json_value(summary), allow_nan=False, indent=2))
+            (output / options["filenames"]["metadata"]).write_text(json.dumps(_json_value(metadata), allow_nan=False, indent=2))
+            print(f"Comparison reports: {output}", flush=True)
     return completed

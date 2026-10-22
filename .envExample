@@ -1,0 +1,11 @@
+## Create a .env file in the root directory of the project and add your OpenRouter 
+## API key and other configurations. You can use the .envExample file as a template.
+
+OPENROUTER_API_KEY="Your_API_Key_Here"
+OPENROUTER_MODEL=typesafe/jev-1.13
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+MAX_LLM_CALLS=100000
+MAX_OUTPUT_TOKENS=
+OPENROUTER_DECISIONS_URL=https://openrouter.ai/api/alpha/decisions
+OPENROUTER_FAMILY_MODEL=anthropic/claude-opus-5.5:batch
+

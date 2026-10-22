@@ -38,6 +38,8 @@ calibration:
   confidence: 0.95
   max_attack_leaf_benign_share: 0.10
   max_benign_region_attack_share: 0.10
+benign_acceptance:
+  max_fraction: 0.05
 expected_attacks:
   cicids2018: [DDoS, DoS Hulk, DoS GoldenEye, DoS Slow, Brute Force, Port Scanning, Infiltration, Botnet, Web Attack]
   ton_iot: [backdoor, ddos, dos, injection, mitm, password, ransomware, scanning, xss]
@@ -120,3 +122,95 @@ datasets:
       loadmodule: U2R
       perl: U2R
       rootkit: U2R
+
+paper:
+  seed: 42
+  reference:
+    doi: https://doi.org/10.1109/TNSM.2026.3731401
+    author_code: https://github.com/hussein-fawaz/ZDA-SHAP-UQ
+    author_commit: 88fa3c196a62f4621cb2f3081fa4fc4dc9979631
+    reproduction_status: adapted_reproduction
+    deviations:
+      - Existing PKL datasets and group-disjoint partitions replace the paper datasets and random row splits; one configured seed is used per invocation.
+      - Missing values are imputed and duplicate rows retained to preserve shared flow identities; categorical columns use the existing training-fitted one-hot encoder.
+      - Preprocessing is fitted on known-attack training rows only; the author code filters features before splitting. Input standardization follows the paper text.
+      - The published 16-unit bottleneck and dropout at each hidden layer take precedence over the author code's 8-unit bottleneck and selective dropout.
+      - The autoencoder uses a group-disjoint 80/20 subset of source training for early stopping; the author code reuses the outer source validation set.
+      - SHAP StandardScaler and validation-fitted 2D StandardScaler, GMM BIC selection and density threshold follow the author code; tanh outputs do not imply clipped SHAP inputs.
+      - Nonconverged GMM candidates are rejected; the author selector does not check convergence. Positive-class F1 replaces the paper's macro F1 for the requested comparison.
+      - Hardware limits and batching are engineering settings, not reported paper hyperparameters. Array memory guards are not a process RSS cap.
+  classifier:
+    backend: rf  # rf or xgboost; both are backends of the same paper method.
+    rf: {n_estimators: 400, criterion: gini, max_depth: null, min_samples_split: 2, min_samples_leaf: 1, max_features: sqrt, bootstrap: true}
+    xgboost: {n_estimators: 100, max_depth: 6, learning_rate: 0.3, subsample: 1.0, colsample_bytree: 1.0, reg_lambda: 1.0, objective: 'multi:softprob', eval_metric: mlogloss, tree_method: hist}
+  preprocessing:
+    variance_threshold: 0.025  # Author code; paper describes zero-variance filtering.
+    skew_threshold: 50.0
+    winsor_limits: [0.05, 0.05]
+    correlation_threshold: 0.93
+    standardize: true
+  shap:
+    importance_fraction: 0.90
+    feature_perturbation: tree_path_dependent
+    model_output: raw
+    approximate: {rf: true, xgboost: false}  # Matches author implementation.
+    check_additivity: false
+    selection_max_rows: null  # null uses every known-attack training row.
+  reconstruction:
+    encoder_units: [256, 128, 64, 32, 16]
+    decoder_units: [16, 32, 64, 128, 256]
+    activation: relu
+    output_activation: tanh
+    dropout: 0.10
+    batch_norm_momentum: 0.99
+    batch_norm_epsilon: 0.001
+    kernel_initializer: glorot_uniform
+    optimizer: {learning_rate: 0.001, beta_1: 0.9, beta_2: 0.999, epsilon: 0.0000001}
+    loss: mse
+    batch_size: 512
+    max_epochs: 10
+    patience: 3
+    min_delta: 0.0
+    train_fraction: 0.80
+    split_salt: 32452843
+    shuffle: true
+  uncertainty:
+    subensembles: 20
+  gmm:
+    components: [1, 2, 3, 4, 5, 6]
+    covariance_types: [full, diag, tied, spherical]
+    reg_covar: 0.000001
+    n_init: 3
+    max_iter: 100
+    tol: 0.001
+    init_params: kmeans
+  threshold:
+    quantile: 0.95
+    quantile_method: linear
+  resources:
+    cpu_threads: 2
+    tensorflow_inter_threads: 1
+    tensorflow_log_level: '2'
+    max_dense_mb: 512
+    dtype: float32
+    batch_size: 512
+
+comparison:
+  methods: [zeta, paper]
+  datasets: [cicids2018, unsw_nb15, ton_iot, kdd]
+  attacks: {}  # Optional dataset -> list of held-out families; empty means all.
+  train_row_limit: null
+  validation_row_limit: null
+  test_row_limit: null
+  sampling_seed: 17
+  output_directory: results/comparison
+  save_results: true
+  print_table: true
+  measure_memory: true
+  metric_zero_division: 0
+  percentage_decimals: 2
+  filenames:
+    metrics: metrics.csv
+    summary: summary.json
+    predictions: predictions.csv
+    metadata: experiment_metadata.json
