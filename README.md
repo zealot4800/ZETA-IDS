@@ -6,6 +6,10 @@ The default ZETA-IDS workflow evaluates four datasets independently. For each co
 
 ## Run
 
+```
+Dataset availbility at: "https://zenodo.org/records/23553819"
+```
+
 Install the packages in `requirements.txt`, then run from the repository root:
 
 ```bash
