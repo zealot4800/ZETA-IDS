@@ -10,7 +10,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from .loao import _path_conditions
+from .loao import DECISIONS, _path_conditions
 from .loao_policies import _benign_region_scores, _conditional_pass, _predict
 
 
@@ -61,7 +61,7 @@ def build_source(data: dict, train: np.ndarray, cfg: dict) -> dict:
     if any(str(name).strip().lower() in banned for name in raw.columns):
         raise ValueError("Label or evaluation metadata in controller feature schema")
     selected = source_sample(data["x"], data["y"], np.flatnonzero(train),
-                             cfg["jev"]["few_shot_per_class"], cfg["general"]["seed"])
+                             cfg["verifier"]["few_shot_per_class"], cfg["general"]["seed"])
     examples = [{"features": feature_values(raw, int(i)),
                  "binary": "ATTACK" if data["y"][i] else "BENIGN"} for i in selected]
     baseline_rows = raw.loc[train & (data["y"] == 0)]
@@ -95,12 +95,29 @@ def build_source(data: dict, train: np.ndarray, cfg: dict) -> dict:
             "missing_feature_handling": options["missing_feature_handling"]}
 
 
-def unresolved_indices(data: dict, model: dict, mask: np.ndarray) -> np.ndarray:
+def dataplane_partition(data: dict, model: dict, mask: np.ndarray) -> dict[str, np.ndarray]:
+    """Apply the frozen data-plane rules before selecting any controller traffic."""
     positions = np.flatnonzero(mask)
     if not positions.size:
-        return positions
+        return {decision: positions.copy() for decision in DECISIONS}
     decisions = _predict(model, data["x"].iloc[positions])[0]
-    return positions[decisions == "UNRESOLVED"]
+    partition = {decision: positions[decisions == decision] for decision in DECISIONS}
+    if sum(len(rows) for rows in partition.values()) != len(positions):
+        raise ValueError("Unexpected data-plane decision")
+    return partition
+
+
+def controller_partition(internal: dict[str, np.ndarray], benign_authorized: bool = True) -> dict[str, np.ndarray]:
+    """Keep internal diagnostics intact; every non-benign flow needs verification."""
+    accepted = internal["BENIGN"] if benign_authorized else internal["BENIGN"][:0]
+    forwarded = [internal["KNOWN_ATTACK"], internal["UNRESOLVED"]]
+    if not benign_authorized:
+        forwarded.append(internal["BENIGN"])
+    return {"BENIGN": accepted, "UNRESOLVED": np.sort(np.concatenate(forwarded))}
+
+
+def unresolved_indices(data: dict, model: dict, mask: np.ndarray) -> np.ndarray:
+    return controller_partition(dataplane_partition(data, model, mask), model.get("controller_benign_authorized", True))["UNRESOLVED"]
 
 
 def flow_record(data: dict, model: dict, position: int) -> dict:
@@ -108,7 +125,8 @@ def flow_record(data: dict, model: dict, position: int) -> dict:
     decisions, _, _, leaves, inside, raw_inside, membership = _predict(model, x)
     leaf = int(leaves[0])
     cap = model.get("benign_acceptance_max_score", np.inf)
-    evidence = {"tree_leaf": leaf, "attack_rule_match": leaf in model["attack_rules"],
+    evidence = {"internal_decision": str(decisions[0]),
+                "tree_leaf": leaf, "attack_rule_match": leaf in model["attack_rules"],
                 "benign_rule_match": leaf in model["benign_rules"],
                 "inside_benign_region": bool(inside[0]),
                 "inside_raw_region": bool(raw_inside[0]),
@@ -116,9 +134,29 @@ def flow_record(data: dict, model: dict, position: int) -> dict:
                 "conditional_pass": bool(_conditional_pass(model, x, leaves)[0]),
                 "acceptance_limit_pass": bool(_benign_region_scores(model, x, leaves)[0] <= cap),
                 "rule_conditions": _path_conditions(model, leaf)}
+    # The tree and regions share partitions: these are correlated observations.
+    attack_support = evidence["attack_rule_match"]
+    benign_support = (evidence["benign_rule_match"] and evidence["inside_benign_region"] and
+                      evidence["membership_pass"] and evidence["conditional_pass"])
+    evidence["evidence_state"] = ("CONFLICTING" if attack_support and benign_support else
+                                  "ATTACK_SUPPORTED" if attack_support else
+                                  "BENIGN_SUPPORTED" if benign_support else "INSUFFICIENT")
+    evidence["benign_release_authorized"] = model.get("controller_benign_authorized", True)
+    evidence["benign_rejection_reasons"] = ([] if decisions[0] == "BENIGN" else [
+        name for name, failed in {
+            "attack_rule_match": evidence["attack_rule_match"],
+            "no_benign_rule": not evidence["benign_rule_match"],
+            "outside_benign_region": not evidence["inside_benign_region"],
+            "membership_rejected": not evidence["membership_pass"],
+            "conditional_rejected": not evidence["conditional_pass"],
+            "acceptance_cap_rejected": not evidence["acceptance_limit_pass"],
+        }.items() if failed])
+    if decisions[0] == "BENIGN" and not evidence["benign_release_authorized"]:
+        evidence["benign_rejection_reasons"].append("independent_gate_uncertified")
     return {"flow_id": digest([data["name"], int(data["row_positions"][position])]),
             "dataset": data["name"], "features": feature_values(data["raw_x"], position),
-            "first_layer_decision": str(decisions[0]), "first_layer_evidence": evidence}
+            "first_layer_decision": "BENIGN" if decisions[0] == "BENIGN" and evidence["benign_release_authorized"] else "UNRESOLVED",
+            "first_layer_evidence": evidence}
 
 
 def public_flow(flow: dict, source: dict) -> dict:
@@ -141,7 +179,11 @@ def evidence_tool(name: str, arguments: dict, flow: dict, source: dict, cfg: dic
                     "unknown_handling": knowledge["unknown_handling"]}
         if len(families) > cfg["evidence"]["max_families_per_tool"]:
             raise ValueError("Too many requested families")
-        return {family: knowledge["families"].get(family) for family in families}
+        aliases = knowledge.get("label_aliases", {})
+        resolved = {family: aliases.get(family, family.lower()) for family in families}
+        if not set(resolved.values()) <= set(knowledge["families"]):
+            raise ValueError("Unavailable attack-knowledge family")
+        return {family: knowledge["families"][name] for family, name in resolved.items()}
     features = arguments.get("features")
     if features is None:
         features = source["feature_names"] if name == "inspect_flow" else []

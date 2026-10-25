@@ -3,7 +3,6 @@ pandas>=2.2
 scikit-learn>=1.4
 PyYAML>=6
 scipy>=1.11
-typesafe-sdk==0.7.5
 jsonschema>=4.23,<5
 shap>=0.45,<1
 tensorflow-cpu>=2.16,<3

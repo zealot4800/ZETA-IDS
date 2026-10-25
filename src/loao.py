@@ -22,7 +22,7 @@ from .loao_model import (
     _build_membership, _fit_model, _fit_safe_model, _split_validation, _wilson_upper,
 )
 from .loao_policies import (
-    _benign_region_scores, _cap_benign_acceptance, _conditional_pass,
+    _acceptance_candidates, _benign_region_scores, _cap_benign_acceptance, _conditional_pass,
     _conditional_profiles, _predict, _select_conditional,
     _select_membership, _with_conditional,
 )
@@ -145,6 +145,14 @@ def _overlap_diagnostics(data: dict, cfg: dict, model: dict, x_test: pd.DataFram
             "certified_benign_overlap_pct": 100 * certified.sum() / n if n else math.nan,
             "overlapping_benign_regions": len(records),
             "attack_flows_matching_multiple_benign_regions": 0,
+            "gate_evidence_overlap_count": int(np.sum(attack_evidence & benign_evidence)),
+            "gate_rejection_reasons_json": json.dumps({
+                "attack_rule_match": int(np.sum(attack_evidence)),
+                "no_certified_region_match": int(np.sum(~region_evidence)),
+                "membership_rejected_in_region": int(np.sum(region_evidence & ~membership_pass)),
+                "conditional_rejected_after_membership": int(np.sum(
+                    region_evidence & membership_pass & ~conditional_pass)),
+                "acceptance_cap_rejected_after_gates": int(np.sum(before_cap & ~cap_pass))}, sort_keys=True),
             "evidence_groups_json": json.dumps(groups, sort_keys=True),
             "overlap_regions_json": json.dumps(records, sort_keys=True)}
 
@@ -268,6 +276,17 @@ def _evaluate_model(data: dict, cfg: dict, excluded: str, model: dict,
     row.update(_overlap_diagnostics(data, cfg, model, x_test, truth == excluded, test_y == 0,
                                     leaves, inside, raw_inside, membership_pass,
                                     conditional_pass))
+    # Legacy fields above describe the internal three-way classifier. Gate
+    # routing forwards every non-benign decision, including known-attack rules.
+    routing = {}
+    for label, counts in (("all", all_counts), ("benign", benign), ("known_attack", known), ("unknown_attack", unknown)):
+        escalated = counts["count"] - counts["benign"]
+        routing[label] = {"count": counts["count"], "accepted_benign": counts["benign"],
+                          "escalated": escalated, "accepted_benign_pct": counts["benign_pct"],
+                          "escalated_pct": 100 * escalated / counts["count"] if counts["count"] else None}
+    row["gate_routing_json"] = json.dumps(routing, sort_keys=True)
+    row["gate_overall_escalated"] = routing["all"]["escalated"]
+    row["gate_overall_escalation_pct"] = routing["all"]["escalated_pct"]
     return row
 
 
@@ -289,7 +308,7 @@ def fit_fold(data: dict, cfg: dict, excluded: str) -> tuple[dict, dict]:
     profiles = _conditional_profiles(data, refined, train, tuning, cfg)
     candidate = _with_conditional(refined, profiles, selected, cfg)
     candidate, cap_audit = _cap_benign_acceptance(
-        candidate, data, certification, cfg["benign_acceptance"]["max_fraction"])
+        candidate, data, tuning, cfg["benign_acceptance"]["max_fraction"])
     fit_seconds = time.perf_counter() - conditional_start
     total_training_seconds = (base_seconds + safe_seconds + proxy_seconds +
                               membership_seconds + selection_seconds + fit_seconds)
@@ -370,10 +389,40 @@ def _evaluate_conditional_fold(data: dict, cfg: dict, excluded: str) -> dict:
     return row
 
 
+def _evaluate_acceptance_sensitivity(data: dict, cfg: dict, excluded: str) -> list[dict]:
+    """Exploratory caps share one detector; an extra source holdout certifies the gate."""
+    options = cfg["benign_acceptance"]["sensitivity"]
+    source = data["validation"] & (data["family"] != excluded)
+    split_cfg = {**cfg, "safe_regions": {**cfg["safe_regions"],
+                                        "certification_fraction": options["certification_fraction"]}}
+    detector_validation, gate_certification = _split_validation(
+        data, source, split_cfg, salt=options["certification_salt"])
+    detector_data = {**data, "validation": detector_validation}
+    uncapped_cfg = {**cfg, "benign_acceptance": {**cfg["benign_acceptance"], "max_fraction": 1.0}}
+    model, fold = fit_fold(detector_data, uncapped_cfg, excluded)
+    candidates, chosen = _acceptance_candidates(model, data, fold["tuning"], gate_certification, cfg, excluded)
+    # Selection is finished before any test prediction or test-label evaluation.
+    rows = []
+    for candidate, audit in candidates:
+        row = _evaluate_model(data, cfg, excluded, candidate, fold["train"], fold["tuning"],
+                              fold["certification"], fold["training_seconds"])
+        row.update({key: value for key, value in fold["metrics"].items()
+                    if not key.startswith("source_cert_final_")})
+        row.update(audit)
+        row.update(configuration="acceptance_cap_sensitivity", source_recommended_cap=chosen,
+                   source_recommended=audit["acceptance_cap_fraction"] == chosen,
+                   gate_certification_rows=int(gate_certification.sum()))
+        rows.append(row)
+    return rows
+
+
 def run(config_path: Path, dataset: str | None = None,
-        attack: str | None = None, method: str | None = None) -> dict[str, list[dict]]:
+        attack: str | None = None, method: str | None = None,
+        acceptance_sensitivity: bool = False) -> dict[str, list[dict]]:
     """Keep the original terminal workflow; explicit methods use shared comparison."""
     if method is not None:
+        if acceptance_sensitivity:
+            raise ValueError("Acceptance sensitivity is a first-layer diagnostic; omit --method")
         return _run_comparison(config_path, dataset, attack, method)
     with config_path.open() as stream:
         cfg = yaml.safe_load(stream)
@@ -397,24 +446,51 @@ def run(config_path: Path, dataset: str | None = None,
             families = [attack]
         completed[name] = []
         for excluded in families:
-            row = _evaluate_conditional_fold(data, cfg, excluded)
-            completed[name].append(row)
-            print(f"{name}/{excluded}: C held-out {row['unknown_count']}; "
-                  f"bypass {row['unknown_to_benign']} "
-                  f"({row['unknown_to_benign_pct']:.2f}%); "
-                  f"attack {row['unknown_to_known_attack']}; "
-                  f"unresolved {row['unknown_to_unresolved']}; "
-                  f"benign acceptance {row['benign_acceptance_pct']:.2f}%; "
-                  f"source cap {row['target_benign_acceptance_pct']:.2f}%; "
-                  f"known recall {row['known_attack_recall_pct']:.2f}%; "
-                  f"policy {row['conditional_status']}", flush=True)
-            if "unknown_by_original_label_json" in row:
-                for label, details in json.loads(row["unknown_by_original_label_json"]).items():
-                    print(f"  {label}: bypass {details['benign']}/{details['count']} "
-                          f"({details['benign_pct']:.2f}%); distinct patterns "
-                          f"{details['distinct_benign']}/{details['distinct_count']}",
-                          flush=True)
+            rows = (_evaluate_acceptance_sensitivity(data, cfg, excluded) if acceptance_sensitivity
+                    else [_evaluate_conditional_fold(data, cfg, excluded)])
+            completed[name].extend(rows)
+            for row in rows:
+                _print_first_layer(row)
     return completed
+
+
+def _print_first_layer(row: dict) -> None:
+    name, excluded = row["dataset"], row["heldout_attack"]
+    print(f"{name}/{excluded}: internal C held-out {row['unknown_count']}; "
+          f"bypass {row['unknown_to_benign']} "
+          f"({row['unknown_to_benign_pct']:.2f}%); "
+          f"attack {row['unknown_to_known_attack']}; "
+          f"unresolved {row['unknown_to_unresolved']}; "
+          f"benign acceptance {row['benign_acceptance_pct']:.2f}%; "
+          f"source cap {row['target_benign_acceptance_pct']:.2f}%; "
+          f"known recall {row['known_attack_recall_pct']:.2f}%; "
+          f"policy {row['conditional_status']}", flush=True)
+    for group, counts in json.loads(row["gate_routing_json"]).items():
+        percentage = f"{counts['escalated_pct']:.2f}" if counts['escalated_pct'] is not None else "n/a"
+        print(f"  gate {group}: accept {counts['accepted_benign']}/{counts['count']}; "
+              f"escalate {counts['escalated']}/{counts['count']} "
+              f"({percentage}%)", flush=True)
+    print(f"  gate overlap={row['gate_evidence_overlap_count']}; "
+          f"latency={row['inference_ms_per_flow']:.5f} ms/flow; "
+          f"rejections={row['gate_rejection_reasons_json']}", flush=True)
+    if "source_gate_status" in row:
+        print(f"  source cap={row['acceptance_cap_fraction']:.0%}; "
+              f"reference={row['reference_baseline']}; recommended={row['source_recommended']}; "
+              f"status={row['source_gate_status']}; "
+              f"cert attacks bypassed={row['source_gate_attack_bypassed']}/{row['source_gate_attack_count']}; "
+              f"upper={row['source_gate_attack_upper_pct']:.4f}% "
+              f"budget={row['source_gate_budget_pct']:.4f}%; "
+              f"cert benign accepted={row['source_gate_benign_accepted']}/{row['source_gate_benign_count']}; "
+              f"cert escalated={row['source_gate_escalated']}/{row['source_gate_rows']}", flush=True)
+        if row["source_recommended_cap"] is None and row["reference_baseline"]:
+            print("  No nondegenerate cap certified; no optimization approved and no configuration changed.", flush=True)
+    if "unknown_by_original_label_json" in row:
+        for label, details in json.loads(row["unknown_by_original_label_json"]).items():
+            print(f"  {label}: bypass {details['benign']}/{details['count']} "
+                  f"({details['benign_pct']:.2f}%); distinct patterns "
+                  f"{details['distinct_benign']}/{details['distinct_count']}",
+                  flush=True)
+
 
 
 def _comparison_metrics(data: dict, excluded: str, positions: np.ndarray, result: dict,

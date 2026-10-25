@@ -7,6 +7,7 @@ import time
 
 import numpy as np
 import pandas as pd
+from scipy.stats import beta
 from sklearn.metrics import mutual_info_score
 
 from .loao_data import _partitions
@@ -360,6 +361,11 @@ def _cap_benign_acceptance(model: dict, data: dict,
     """Set a source-only cutoff that accepts at most the requested benign share."""
     if not 0 <= max_fraction <= 1:
         raise ValueError("benign_acceptance.max_fraction must be in [0, 1]")
+    if (calibration.shape != data["validation"].shape or calibration.dtype != np.bool_ or
+            np.any(calibration & (~data["validation"] | data["test"]))):
+        raise ValueError("Acceptance-cap fitting requires source-validation rows, never test rows")
+    # Every exploratory cap starts from the same uncapped detector.
+    model = {key: value for key, value in model.items() if key != "benign_acceptance_max_score"}
     x = data["x"].loc[calibration]
     benign = data["y"][calibration] == 0
     count = int(benign.sum())
@@ -403,3 +409,51 @@ def _predict(model: dict, x: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, floa
     decisions[benign & ~attack] = "BENIGN"
     return (decisions, known_family, time.perf_counter() - start,
             leaves, inside, raw_inside, membership_pass)
+
+
+def _acceptance_candidates(model: dict, data: dict, tuning: np.ndarray,
+                           certification: np.ndarray, cfg: dict, excluded: str) -> tuple[list, float | None]:
+    """Freeze source-fitted caps, certify on reserved rows, then rank by tuning coverage."""
+    options = cfg["benign_acceptance"]["sensitivity"]
+    caps, reference = options["caps"], options["reference_fraction"]
+    if (not caps or caps != sorted(set(caps)) or reference not in caps or
+            any(not 0 < cap <= 1 for cap in caps)):
+        raise ValueError("Sensitivity caps must be unique, increasing, in (0, 1], and include the reference")
+    if np.any(tuning & certification):
+        raise ValueError("Cap fitting and certification must be disjoint")
+    for mask in (tuning, certification):
+        if np.any(mask & (~data["validation"] | data["test"] | (data["family"] == excluded))):
+            raise ValueError("Cap analysis cannot use test rows or the withheld attack")
+    # Simultaneous one-sided bounds permit selecting among the frozen candidates
+    # without pretending each repeated certification check has 95% familywise coverage.
+    confidence = 1 - (1 - cfg["calibration"]["confidence"]) / len(caps)
+    budget = cfg["safe_regions"]["known_attack_leakage_budget"]
+    y = data["y"][certification]
+    attacks, benign = int(np.sum(y == 1)), int(np.sum(y == 0))
+    candidates = []
+    fitted = [(cap, *_cap_benign_acceptance(model, data, tuning, cap)) for cap in caps]
+    for cap, candidate, audit in fitted:
+        decisions = _predict(candidate, data["x"].loc[certification])[0]
+        accepted = decisions == "BENIGN"
+        errors = int(np.sum(accepted & (y == 1)))
+        covered = int(np.sum(accepted & (y == 0)))
+        upper = float(beta.ppf(confidence, errors + 1, attacks - errors)) if attacks > errors else 1.0
+        safe = attacks >= cfg["calibration"]["min_validation_support"] and upper <= budget
+        nondegenerate = audit["source_benign_accepted_after"] > 0 and covered > 0
+        audit.update(acceptance_cap_fraction=cap, reference_baseline=cap == reference,
+                     source_gate_attack_count=attacks, source_gate_attack_bypassed=errors,
+                     source_gate_attack_upper_pct=100 * upper,
+                     source_gate_confidence=confidence, source_gate_budget_pct=100 * budget,
+                     source_gate_benign_count=benign, source_gate_benign_accepted=covered,
+                     source_gate_benign_acceptance_pct=100 * covered / benign if benign else None,
+                     source_gate_rows=len(y), source_gate_escalated=int(np.sum(~accepted)),
+                     source_gate_escalation_pct=100 * np.mean(~accepted) if len(y) else None,
+                     candidate_usable=bool(safe and nondegenerate),
+                     source_gate_status=("rejected_safety" if not safe else
+                                         "degenerate_no_benign_coverage" if not nondegenerate else "certified"))
+        candidates.append((candidate, audit))
+    eligible = [audit for _, audit in candidates if audit["candidate_usable"]]
+    chosen = (max(eligible, key=lambda row: (row["source_benign_accepted_after"],
+                                           -row["acceptance_cap_fraction"]))["acceptance_cap_fraction"]
+              if eligible else None)
+    return candidates, chosen
