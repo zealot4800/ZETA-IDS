@@ -6,3 +6,5 @@ extra/*
 *.zip
 __pycache__/
 results/
+config/*.ollama
+paper/*

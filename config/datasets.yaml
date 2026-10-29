@@ -1,0 +1,67 @@
+datasets:
+  cicids2018:
+    path: data/CICIDS2018.pkl
+    family_column: mapped_label
+    binary_column: binary_label
+    benign_value: BENIGN
+    feature_source: metadata
+    exclude: []
+    categorical: []
+  unsw_nb15:
+    path: data/UNSW_NB15.pkl
+    official_split:
+      reset_index: 175341
+    family_column: attack_cat
+    binary_column: label
+    benign_value: Normal
+    feature_source: columns
+    exclude: [id]
+    categorical: [proto, service, state]
+  ton_iot:
+    path: data/TON-IOT.pkl
+    family_column: type
+    binary_column: label
+    benign_value: normal
+    feature_source: columns
+    exclude: [ts, src_ip, dst_ip, dns_query, ssl_subject, ssl_issuer,
+              http_uri, http_referrer, http_user_agent, http_orig_mime_types,
+              http_resp_mime_types, weird_addl]
+    categorical: [proto, service, conn_state, dns_AA, dns_RD, dns_RA,
+                  dns_rejected, ssl_version, ssl_cipher, ssl_resumed,
+                  ssl_established, http_method, http_version, weird_name,
+                  weird_notice]
+  kdd:
+    path: data/KDD.pkl
+    row_selection:
+      column: split
+      include: train
+    family_column: original_label
+    binary_column: label
+    benign_value: normal
+    feature_source: metadata
+    exclude: [difficulty, split]
+    categorical: [protocol_type, service, flag]
+    family_map:
+      normal: normal
+      back: DoS
+      land: DoS
+      neptune: DoS
+      pod: DoS
+      smurf: DoS
+      teardrop: DoS
+      ipsweep: Probe
+      nmap: Probe
+      portsweep: Probe
+      satan: Probe
+      ftp_write: R2L
+      guess_passwd: R2L
+      imap: R2L
+      multihop: R2L
+      phf: R2L
+      spy: R2L
+      warezclient: R2L
+      warezmaster: R2L
+      buffer_overflow: U2R
+      loadmodule: U2R
+      perl: U2R
+      rootkit: U2R

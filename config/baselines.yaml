@@ -1,0 +1,59 @@
+# Local-Ollama paper adaptations using the repository datasets.
+general:
+  construction_limit: 50000
+  validation_fraction: 0.20
+  task: binary
+llm:
+  max_tokens: 512
+embedding:
+  model: sentence-transformers/all-MiniLM-L6-v2
+  cache_folder: results/models/sentence_transformers
+  batch_size: 64
+rlfe_ids:
+  epochs: 150
+  batch_size: 32
+  learning_rate: 0.001
+  prototypes_per_class: 32
+  references_per_class: 100
+  retrieval_k: 3
+  distance: euclidean  # Also supports regularized Mahalanobis.
+ma_ids:
+  similarity_threshold: 0.70  # Local choice; paper does not specify tau.
+sera_ids:
+  candidate_pool: 20
+  retrieval_k: 5
+  signal_threshold: 0.50
+  admission_threshold: 0.80
+  confidence_backend: training_proxy
+scala_nids:
+  chunk_size: 4000
+  buffer_size: 2000
+  batch_size: 128
+  domain_epochs: 3
+  reconstruction_epochs: 5
+  joint_epochs: 10  # Local choice; not specified in the paper.
+  learning_rate: 0.001
+  hidden: [256, 256]
+  inspection_period: 5
+  domain_threshold: 0.65
+  confidence_threshold: 0.80
+  distribution_pvalue: 0.05
+  unknown_threshold: 1.0
+  buffer_unknown_max: 0.80
+  buffer_confidence_min: 0.90
+  buffer_entropy_max: 0.35
+  reconstruction_quantile: 0.95
+  anomaly_alpha: 0.50
+  anomaly_threshold: 0.50
+  gradient_clip: 1.0
+  loss_ratio_max: 1.10
+  source_accuracy_tolerance: 0.01
+  confidence_tolerance: 0.02
+  prediction_entropy_min: 0.05
+  unknown_rate_tolerance: 0.05
+  templates:
+    conservative: {weights: [1.0, 0.1, 0.1, 0.1], learning_rate: 0.0001, epochs: 1, pseudo_threshold: 0.99, source_target_ratio: [3, 1]}
+    covariate: {weights: [0.6, 0.5, 0.2, 0.2], learning_rate: 0.0005, epochs: 3, pseudo_threshold: 0.95, source_target_ratio: [2, 1]}
+    label: {weights: [0.5, 0.2, 0.5, 0.3], learning_rate: 0.0005, epochs: 3, pseudo_threshold: 0.85, source_target_ratio: [1, 1]}
+    concept: {weights: [0.4, 0.3, 0.4, 0.4], learning_rate: 0.001, epochs: 5, pseudo_threshold: 0.90, source_target_ratio: [1, 2]}
+    mixed: {weights: [0.3, 0.4, 0.5, 0.4], learning_rate: 0.001, epochs: 5, pseudo_threshold: 0.85, source_target_ratio: [1, 2]}

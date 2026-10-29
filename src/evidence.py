@@ -1,8 +1,7 @@
-"""Label-free flow records and references built only from permitted source rows."""
+"""Flow observations and references used by the controller."""
 
 from __future__ import annotations
 
-import fnmatch
 import hashlib
 import json
 import math
@@ -10,17 +9,14 @@ import math
 import numpy as np
 import pandas as pd
 
-from .loao import _path_conditions
-from .loao_policies import _benign_region_scores, _conditional_pass, _predict
-
 
 def scalar(value):
-    if pd.isna(value):
+    if value is None or value is pd.NA or value is pd.NaT:
         return None
     if isinstance(value, np.generic):
         value = value.item()
     if isinstance(value, float) and not math.isfinite(value):
-        return str(value)
+        return None if math.isnan(value) else str(value)
     if not isinstance(value, (str, int, float, bool)):
         raise ValueError("Unsupported flow feature type")
     return value
@@ -31,42 +27,16 @@ def digest(value) -> str:
                                     separators=(",", ":")).encode()).hexdigest()
 
 
-def feature_values(frame: pd.DataFrame, position: int) -> dict:
-    return {name: scalar(frame[name].iloc[position]) for name in frame.columns}
-
-
-def source_sample(x: pd.DataFrame, y: np.ndarray, indices: np.ndarray,
-                  per_class: int, seed: int) -> np.ndarray:
-    """One row per feature pattern, excluding ambiguous patterns; source input only."""
-    groups = pd.util.hash_pandas_object(x.iloc[indices], index=False).to_numpy()
-    rows = pd.DataFrame({"group": groups, "label": y[indices], "position": indices})
-    unambiguous = rows.groupby("group")["label"].transform("nunique") == 1
-    rows = rows.loc[unambiguous].drop_duplicates("group")
-    rng = np.random.default_rng(seed)
-    selected = []
-    for label in (0, 1):
-        pool = rows.loc[rows["label"] == label, "position"].to_numpy()
-        selected.extend(rng.permutation(pool)[:per_class].tolist())
-    return rng.permutation(selected).astype(int)
+def feature_batch(frame: pd.DataFrame, positions):
+    """Extract native columns once, then serialize Python row tuples."""
+    names = list(frame.columns)
+    return [dict(zip(names, (scalar(value) for value in row)))
+            for row in frame.iloc[positions].itertuples(index=False, name=None)]
 
 
 def build_source(data: dict, train: np.ndarray, cfg: dict) -> dict:
     raw = data["raw_x"]
-    if raw is None:
-        raise ValueError("Controller requires original permitted features")
-    banned = {str(name).strip().lower() for name in cfg["evidence"]["forbidden_features"]}
-    # These fixed label fields must remain excluded even if a config is weakened.
-    banned |= {"label", "original_label", "binary_label", "mapped_label", "mapped_class_id",
-               "attack_cat", "class_id", "target", "heldout_attack", "split", "difficulty"}
-    if any(str(name).strip().lower() in banned for name in raw.columns):
-        raise ValueError("Label or evaluation metadata in controller feature schema")
-    selected = source_sample(data["x"], data["y"], np.flatnonzero(train),
-                             cfg["jev"]["few_shot_per_class"], cfg["general"]["seed"])
-    examples = [{"features": feature_values(raw, int(i)),
-                 "binary": "ATTACK" if data["y"][i] else "BENIGN"} for i in selected]
     baseline_rows = raw.loc[train & (data["y"] == 0)]
-    if baseline_rows.empty:
-        raise ValueError("Source baseline requires benign source-training rows")
     options = cfg["evidence"]
     statistics = {}
     for name in raw.columns:
@@ -74,88 +44,74 @@ def build_source(data: dict, train: np.ndarray, cfg: dict) -> dict:
         if name in data["numeric"]:
             finite = pd.to_numeric(column, errors="raise").replace([np.inf, -np.inf], np.nan)
             clean = finite.dropna()
-            values = {"count": int(clean.size), "missing": int(finite.isna().sum()),
-                      "min": scalar(clean.min()), "max": scalar(clean.max()),
-                      "mean": scalar(clean.mean()), "std": scalar(clean.std()),
-                      "quantiles": {str(q): scalar(clean.quantile(q)) for q in options["quantiles"]}}
-            statistics[name] = {key: values[key] for key in options["numeric_statistics"]}
+            statistics[name] = {
+                "mean": scalar(clean.mean()),
+                "quantiles": {str(q): scalar(clean.quantile(q)) for q in options["quantiles"]}}
         else:
-            counts = column.value_counts().head(options["categorical_top_k"])
-            statistics[name] = {"count": int(column.notna().sum()),
-                                "missing": int(column.isna().sum()),
-                                "top_values": [{"value": scalar(k), "count": int(v)}
-                                               for k, v in counts.items()]}
-    groups = {name: {"description": spec["description"], "features": [
-        feature for feature in raw.columns if any(fnmatch.fnmatchcase(feature, pattern)
-                                                 for pattern in spec["patterns"])]}
-              for name, spec in options["feature_groups"].items()}
-    return {"feature_names": list(raw.columns), "examples": examples,
-            "baseline": statistics, "feature_groups": groups,
+            statistics[name] = {}
+    return {"feature_names": list(raw.columns),
+            "baseline": statistics,
             "limitations": options["limitations"],
             "missing_feature_handling": options["missing_feature_handling"]}
 
 
-def unresolved_indices(data: dict, model: dict, mask: np.ndarray) -> np.ndarray:
-    positions = np.flatnonzero(mask)
-    if not positions.size:
-        return positions
-    decisions = _predict(model, data["x"].iloc[positions])[0]
-    return positions[decisions == "UNRESOLVED"]
+def flow_records(data: dict, dataplane, positions, batch_size: int = 256, support=None):
+    """Stream preprocessed positions without per-flow pandas indexing."""
+    positions = np.asarray(positions, dtype=int)
+    raw_values = data["raw_x"].to_numpy(dtype=object)
+    names = list(data["raw_x"].columns)
+    for start in range(0, len(positions), batch_size):
+        batch = positions[start:start + batch_size]
+        decisions, families, leaves, probabilities = dataplane.predict(batch)
+        contexts = [None] * len(batch)
+        if support is not None:
+            advice = dataplane.support_probabilities[batch]
+            # A strong second-model contradiction punts a formerly confident
+            # tree match to the controller, including rare attacks in benign leaves.
+            conflict = (((decisions == "BENIGN") & (advice >= support.options["attack_min_probability"])) |
+                        ((decisions == "ATTACK") & (advice <= support.options["benign_max_probability"])))
+            decisions[conflict] = "UNRESOLVED"
+            deferred = np.flatnonzero(decisions == "UNRESOLVED")
+            if len(deferred):
+                prepared = support.contexts(batch[deferred], leaves[deferred], advice[deferred])
+                for offset, context in zip(deferred, prepared):
+                    contexts[int(offset)] = context
+        features = [dict(zip(names, (scalar(value) for value in row))) for row in raw_values[batch]]
+        for offset, position in enumerate(batch):
+            position, leaf = int(position), int(leaves[offset])
+            yield {
+                "flow_id": digest([data["name"], int(data["row_positions"][position])]),
+                "dataset": data["name"],
+                "features": features[offset],
+                "controller_context": contexts[offset],
+                "dataplane_decision": str(decisions[offset]),
+                "known_family": str(families[offset]),
+                "dataplane_evidence": {"tree_leaf": leaf,
+                                       "p_attack": float(probabilities[offset])},
+            }
 
 
-def flow_record(data: dict, model: dict, position: int) -> dict:
-    x = data["x"].iloc[[position]]
-    decisions, _, _, leaves, inside, raw_inside, membership = _predict(model, x)
-    leaf = int(leaves[0])
-    cap = model.get("benign_acceptance_max_score", np.inf)
-    evidence = {"tree_leaf": leaf, "attack_rule_match": leaf in model["attack_rules"],
-                "benign_rule_match": leaf in model["benign_rules"],
-                "inside_benign_region": bool(inside[0]),
-                "inside_raw_region": bool(raw_inside[0]),
-                "membership_pass": bool(membership[0]),
-                "conditional_pass": bool(_conditional_pass(model, x, leaves)[0]),
-                "acceptance_limit_pass": bool(_benign_region_scores(model, x, leaves)[0] <= cap),
-                "rule_conditions": _path_conditions(model, leaf)}
-    return {"flow_id": digest([data["name"], int(data["row_positions"][position])]),
-            "dataset": data["name"], "features": feature_values(data["raw_x"], position),
-            "first_layer_decision": str(decisions[0]), "first_layer_evidence": evidence}
-
-
-def public_flow(flow: dict, source: dict) -> dict:
-    """Explicit allowlist: IDs, ground truth, fold names and row metadata stay local."""
-    if set(flow["features"]) != set(source["feature_names"]):
-        raise ValueError("Flow schema differs from permitted source schema")
-    return {"features": flow["features"], "first_layer_evidence": flow["first_layer_evidence"],
-            "limitations": source["limitations"],
-            "missing_feature_handling": source["missing_feature_handling"]}
-
-
-def evidence_tool(name: str, arguments: dict, flow: dict, source: dict, cfg: dict) -> dict:
-    if name not in cfg["advanced_llm"]["allowed_tools"]:
-        raise ValueError("Tool is not permitted")
-    if name == "retrieve_attack_knowledge":
-        families = arguments.get("families")
-        knowledge = cfg["attack_knowledge"]
-        if not families:
-            return {"families": list(knowledge["families"]),
-                    "unknown_handling": knowledge["unknown_handling"]}
-        if len(families) > cfg["evidence"]["max_families_per_tool"]:
-            raise ValueError("Too many requested families")
-        return {family: knowledge["families"].get(family) for family in families}
-    features = arguments.get("features")
-    if features is None:
-        features = source["feature_names"] if name == "inspect_flow" else []
-    if name != "inspect_flow" or arguments.get("features") is not None:
-        if len(features) > cfg["evidence"]["max_features_per_tool"]:
-            raise ValueError("Too many requested features")
-    if not set(features) <= set(source["feature_names"]):
-        raise ValueError("Unavailable or forbidden feature")
-    if name == "inspect_flow":
-        result = public_flow(flow, source)
-        result["features"] = {feature: flow["features"][feature] for feature in features}
-        return result
-    if name == "compare_source_baseline":
-        return {feature: {"observed": flow["features"][feature],
-                          "source_benign_training": source["baseline"][feature]}
-                for feature in features}
-    raise ValueError("Unknown evidence tool")
+def investigation_facts(flow: dict, source: dict, cfg: dict) -> dict:
+    """Calculate immutable observations; the LLM selects IDs, never writes facts."""
+    semantics = cfg["feature_semantics"]["datasets"].get(flow.get("dataset"), {})
+    facts = {}
+    for index, name in enumerate(source["feature_names"]):
+        value = flow["features"][name]
+        if value is None or value in ("inf", "-inf", "nan"):
+            continue
+        fact = {"feature": name, "value": value,
+                "meaning": semantics.get(name, cfg["feature_semantics"]["default"])}
+        baseline = source["baseline"][name]
+        if type(value) in (int, float) and math.isfinite(value):
+            mean = baseline.get("mean")
+            if type(mean) in (int, float) and math.isfinite(mean):
+                fact["baseline_mean"] = mean
+                fact["direction"] = "above" if value > mean else "below" if value < mean else "equal"
+                fact["comparison"] = f"Observed {value} is {fact['direction']} source benign mean {mean}."
+            fact["source_quantiles"] = baseline.get("quantiles", {})
+        if name == "flag" and flow.get("dataset") == "kdd":
+            fact["meaning"] = {"SF": "Normal establishment and termination; not SYN flood or scan.",
+                               "S0": "Connection attempt with no reply.",
+                               "REJ": "Connection attempt rejected."}.get(value, fact["meaning"])
+        facts[f"E{index + 1}"] = fact
+    return facts
