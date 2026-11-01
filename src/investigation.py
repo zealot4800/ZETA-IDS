@@ -22,11 +22,24 @@ def selection_schema(cfg: dict, facts: dict, dataset: str) -> dict:
             "properties": properties, "required": list(properties)}
 
 
-def render(selection: dict, facts: dict, cfg: dict) -> dict:
+def render(selection: dict, facts: dict, cfg: dict, *, dataset: str | None = None) -> dict:
     # Resolve references against this flow, including when reusing a pattern.
     # A cached report must never copy another flow's observed numbers.
+    expected = {"attack_family", "evidence_strength", "supporting_ids",
+                "contradicting_ids", "alternative_family"}
+    if not isinstance(selection, dict) or set(selection) != expected:
+        raise ValueError("invalid_selection_fields")
+    families = (set(cfg["family_map"][dataset].values()) if dataset is not None
+                else set(cfg["attack_knowledge"]["families"]))
+    family = selection["attack_family"]
+    alternative = selection["alternative_family"]
+    if not isinstance(family, str) or family not in families | {"UNKNOWN_ATTACK", "INSUFFICIENT_EVIDENCE"}:
+        raise ValueError("unknown_family")
+    if not isinstance(alternative, str) or alternative not in families | {"benign_explanation"}:
+        raise ValueError("unknown_alternative_family")
     support, contrary = selection["supporting_ids"], selection["contradicting_ids"]
     if (not isinstance(support, list) or not isinstance(contrary, list) or
+            len(support) > 6 or len(contrary) > 6 or
             any(not isinstance(key, str) or key not in facts for key in support + contrary)):
         raise ValueError("unavailable_evidence_reference")
     if (len(set(support)) != len(support) or len(set(contrary)) != len(contrary) or
@@ -86,7 +99,7 @@ def investigate(flow: dict, source: dict, cfg: dict, client, *, fresh: bool = Fa
         return {"report": None, "selection": None, "error": reply["error"]}
     try:
         selection = answer(reply["body"])
-        report = render(selection, investigation_facts(flow, source, cfg), cfg)
+        report = render(selection, investigation_facts(flow, source, cfg), cfg, dataset=flow["dataset"])
         return {"report": report, "selection": selection, "error": None}
     except (KeyError, IndexError, TypeError, ValueError):
         return {"report": None, "selection": None, "error": "malformed_investigation_response"}

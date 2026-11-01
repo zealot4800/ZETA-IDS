@@ -1,8 +1,8 @@
 general:
   seed: 17
   datasets_config: config/datasets.yaml
-  max_flows: 5
-  progress_every: 1000
+  progress_every: 100
+  progress_seconds: 15
 
 dataplane:
   train_fraction: 0.70
@@ -234,4 +234,4 @@ adaptive_memory:
   deep_investigation_decisions: [ATTACK]
 
 output:
-  directory: results/runs
+  directory: results

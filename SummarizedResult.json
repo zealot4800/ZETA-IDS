@@ -1,0 +1,3160 @@
+{
+  "schema_version": 1,
+  "policy": "Latest attempt per method/dataset/size/task; incomplete attempts are marked.",
+  "metric_definition": "Ratios in [0,1]; errors and abstentions count against coverage and attack recall.",
+  "runs": {
+    "aegis/kdd/2000/binary": {
+      "method": "aegis",
+      "dataset": "kdd",
+      "dataset_size": 2000,
+      "task": "binary",
+      "detector_version": "9438c347ff0e5e4a007014acc17fe5d3247c7253af31a3b4ee3006adce884dee",
+      "run_id": "20261031T074359.010784Z",
+      "model": "zeta-ids:qwen3-8b",
+      "seed": 17,
+      "investigation_model": "zeta-ids:qwen3-8b",
+      "parameters": {
+        "tree": {
+          "max_depth": 8,
+          "max_leaf_nodes": 64,
+          "min_samples_leaf": 100
+        },
+        "train_fraction": 0.7,
+        "binary_thresholds": {
+          "benign_max": 0.25,
+          "attack_min": 0.75
+        }
+      },
+      "dataset_sha256": "f4d6571c50cc12a96e0f9ad154cbcd3b63fdc499219089e84b501005892e28ca",
+      "dataset_path": "data/KDD.pkl",
+      "configuration_sha256": "f84af92e0dd1d22ca55fe275443fdfa15459f5c52048d9dc10be5d71559e0c10",
+      "latency_scope": "flow_resolution",
+      "training_flows": 1398,
+      "incoming_flows": 602,
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "processed": 602,
+      "decision_sources": {
+        "dataplane": 423,
+        "llm_controller": 179
+      },
+      "decision_reasons": {
+        "bootstrap_tree": 423,
+        "model_neighbours_llm_agree": 101,
+        "insufficient_training_support": 77,
+        "model_llm_disagreement": 1
+      },
+      "requested_flows": 602,
+      "completed": true,
+      "failure": null,
+      "final_decisions": {
+        "ATTACK": 256,
+        "UNCERTAIN": 78,
+        "BENIGN": 268
+      },
+      "errors": {},
+      "api_requests": {
+        "binary_llm": 179,
+        "investigation_llm": 39
+      },
+      "tokens": {
+        "input": 624346,
+        "output": 5409
+      },
+      "cache_hits": 0,
+      "memory_audits": 0,
+      "deep_reports_reused": 4,
+      "elapsed_seconds": 367.9154131539981,
+      "mean_latency_ms": 610.8092670751936,
+      "max_latency_ms": 9256.35537999915,
+      "flows_per_second": 1.6362456653807578,
+      "updated_at": "2026-10-31T07:50:06.745644+00:00",
+      "metrics": {
+        "flows": 602,
+        "true_attacks": 279,
+        "true_benign": 323,
+        "true_positive": 253,
+        "true_negative": 267,
+        "false_positive": 3,
+        "false_negative_benign": 1,
+        "uncertain_attacks": 25,
+        "uncertain_benign": 53,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.8637873754152824,
+        "resolved_accuracy": 0.9923664122137404,
+        "coverage": 0.8704318936877077,
+        "attack_precision": 0.98828125,
+        "attack_recall": 0.9068100358422939,
+        "attack_f1": 0.9457943925233645,
+        "false_positive_rate": 0.009287925696594427
+      },
+      "by_family": {
+        "DoS": {
+          "flows": 219,
+          "correct_over_all": 0.9406392694063926,
+          "attack_recall": 0.9406392694063926,
+          "coverage": 0.9452054794520548
+        },
+        "normal": {
+          "flows": 323,
+          "correct_over_all": 0.826625386996904,
+          "attack_recall": 0.0,
+          "coverage": 0.8359133126934984
+        },
+        "Probe": {
+          "flows": 55,
+          "correct_over_all": 0.8545454545454545,
+          "attack_recall": 0.8545454545454545,
+          "coverage": 0.8545454545454545
+        },
+        "R2L": {
+          "flows": 4,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 0.0
+        },
+        "U2R": {
+          "flows": 1,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 0.0
+        }
+      }
+    },
+    "aegis/cicids2018/2000/binary": {
+      "method": "aegis",
+      "dataset": "cicids2018",
+      "dataset_size": 2000,
+      "task": "binary",
+      "detector_version": "78f22d27cd29a660dbe53eb3b193dc3fc6a5fa1a588ab5356201e17884f3e37d",
+      "run_id": "20261031T075007.503685Z",
+      "model": "zeta-ids:qwen3-8b",
+      "seed": 17,
+      "investigation_model": "zeta-ids:qwen3-8b",
+      "parameters": {
+        "tree": {
+          "max_depth": 8,
+          "max_leaf_nodes": 64,
+          "min_samples_leaf": 100
+        },
+        "train_fraction": 0.7,
+        "binary_thresholds": {
+          "benign_max": 0.25,
+          "attack_min": 0.75
+        }
+      },
+      "dataset_sha256": "79aea7ddd809eb5099e5f06d29346c76b744d6a210f3105461a6a65887b3d6b5",
+      "dataset_path": "data/CICIDS2018.pkl",
+      "configuration_sha256": "f84af92e0dd1d22ca55fe275443fdfa15459f5c52048d9dc10be5d71559e0c10",
+      "latency_scope": "flow_resolution",
+      "training_flows": 1405,
+      "incoming_flows": 595,
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "processed": 595,
+      "decision_sources": {
+        "llm_controller": 119,
+        "dataplane": 452,
+        "adaptive_memory": 24
+      },
+      "decision_reasons": {
+        "model_neighbours_llm_agree": 75,
+        "bootstrap_tree": 452,
+        "corroborated_memory": 24,
+        "insufficient_training_support": 44
+      },
+      "requested_flows": 595,
+      "completed": true,
+      "failure": null,
+      "final_decisions": {
+        "BENIGN": 277,
+        "ATTACK": 274,
+        "UNCERTAIN": 44
+      },
+      "errors": {},
+      "api_requests": {
+        "binary_llm": 103,
+        "investigation_llm": 13
+      },
+      "tokens": {
+        "input": 363978,
+        "output": 2556
+      },
+      "cache_hits": 16,
+      "memory_audits": 4,
+      "deep_reports_reused": 43,
+      "elapsed_seconds": 203.68757748598,
+      "mean_latency_ms": 342.087735272132,
+      "max_latency_ms": 7779.991175979376,
+      "flows_per_second": 2.921140343185408,
+      "updated_at": "2026-10-31T07:53:31.067073+00:00",
+      "metrics": {
+        "flows": 595,
+        "true_attacks": 297,
+        "true_benign": 298,
+        "true_positive": 272,
+        "true_negative": 275,
+        "false_positive": 2,
+        "false_negative_benign": 2,
+        "uncertain_attacks": 23,
+        "uncertain_benign": 21,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.9193277310924369,
+        "resolved_accuracy": 0.9927404718693285,
+        "coverage": 0.9260504201680673,
+        "attack_precision": 0.9927007299270073,
+        "attack_recall": 0.9158249158249159,
+        "attack_f1": 0.9527145359019266,
+        "false_positive_rate": 0.006711409395973154
+      },
+      "by_family": {
+        "BENIGN": {
+          "flows": 298,
+          "correct_over_all": 0.9228187919463087,
+          "attack_recall": 0.0,
+          "coverage": 0.9295302013422819
+        },
+        "Botnet": {
+          "flows": 40,
+          "correct_over_all": 0.925,
+          "attack_recall": 0.925,
+          "coverage": 0.95
+        },
+        "DoS Hulk": {
+          "flows": 40,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Port Scanning": {
+          "flows": 31,
+          "correct_over_all": 0.3548387096774194,
+          "attack_recall": 0.3548387096774194,
+          "coverage": 0.3870967741935484
+        },
+        "DoS GoldenEye": {
+          "flows": 40,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "DoS Slow": {
+          "flows": 16,
+          "correct_over_all": 0.9375,
+          "attack_recall": 0.9375,
+          "coverage": 0.9375
+        },
+        "Web Attack": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "DDoS": {
+          "flows": 87,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Brute Force": {
+          "flows": 41,
+          "correct_over_all": 0.975609756097561,
+          "attack_recall": 0.975609756097561,
+          "coverage": 0.975609756097561
+        },
+        "Infiltration": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "aegis/ton_iot/2000/binary": {
+      "method": "aegis",
+      "dataset": "ton_iot",
+      "dataset_size": 2000,
+      "task": "binary",
+      "detector_version": "e78a475ba55b06c2b69f3e0fa45f667d614664d6f8a9ece71f2a887363afabda",
+      "run_id": "20261031T075923.720648Z",
+      "model": "zeta-ids:qwen3-8b",
+      "seed": 17,
+      "investigation_model": "zeta-ids:qwen3-8b",
+      "parameters": {
+        "tree": {
+          "max_depth": 8,
+          "max_leaf_nodes": 64,
+          "min_samples_leaf": 100
+        },
+        "train_fraction": 0.7,
+        "binary_thresholds": {
+          "benign_max": 0.25,
+          "attack_min": 0.75
+        }
+      },
+      "dataset_sha256": "a05c856293b7ec4b11d57dace461c371199fdf7a4d683ad77e0be1eff2baafa6",
+      "dataset_path": "data/TON-IOT.pkl",
+      "configuration_sha256": "099ffc5173b359b34a1cf54c80d5b24f71ea217d73fa5f7b1fecd1c93a4dc901",
+      "latency_scope": "flow_resolution",
+      "training_flows": 1402,
+      "incoming_flows": 598,
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "processed": 598,
+      "decision_sources": {
+        "dataplane": 335,
+        "llm_controller": 250,
+        "adaptive_memory": 13
+      },
+      "decision_reasons": {
+        "bootstrap_tree": 335,
+        "model_neighbours_llm_agree": 157,
+        "insufficient_training_support": 93,
+        "corroborated_memory": 13
+      },
+      "requested_flows": 598,
+      "completed": true,
+      "failure": null,
+      "final_decisions": {
+        "ATTACK": 487,
+        "BENIGN": 18,
+        "UNCERTAIN": 93
+      },
+      "errors": {
+        "malformed_investigation_response": 1
+      },
+      "api_requests": {
+        "binary_llm": 229,
+        "investigation_llm": 90
+      },
+      "tokens": {
+        "input": 746021,
+        "output": 9653
+      },
+      "cache_hits": 21,
+      "memory_audits": 5,
+      "deep_reports_reused": 62,
+      "elapsed_seconds": 576.522417974018,
+      "mean_latency_ms": 963.5244059085575,
+      "max_latency_ms": 5929.682428017259,
+      "flows_per_second": 1.0372536806139425,
+      "updated_at": "2026-10-31T08:08:59.980131+00:00",
+      "metrics": {
+        "flows": 598,
+        "true_attacks": 532,
+        "true_benign": 66,
+        "true_positive": 484,
+        "true_negative": 18,
+        "false_positive": 3,
+        "false_negative_benign": 0,
+        "uncertain_attacks": 48,
+        "uncertain_benign": 45,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.8394648829431438,
+        "resolved_accuracy": 0.994059405940594,
+        "coverage": 0.8444816053511706,
+        "attack_precision": 0.9938398357289527,
+        "attack_recall": 0.9097744360902256,
+        "attack_f1": 0.9499509322865555,
+        "false_positive_rate": 0.045454545454545456
+      },
+      "by_family": {
+        "scanning": {
+          "flows": 68,
+          "correct_over_all": 0.9558823529411765,
+          "attack_recall": 0.9558823529411765,
+          "coverage": 0.9558823529411765
+        },
+        "dos": {
+          "flows": 65,
+          "correct_over_all": 0.9538461538461539,
+          "attack_recall": 0.9538461538461539,
+          "coverage": 0.9538461538461539
+        },
+        "backdoor": {
+          "flows": 66,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "ddos": {
+          "flows": 65,
+          "correct_over_all": 0.9692307692307692,
+          "attack_recall": 0.9692307692307692,
+          "coverage": 0.9692307692307692
+        },
+        "password": {
+          "flows": 67,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "injection": {
+          "flows": 67,
+          "correct_over_all": 0.9850746268656716,
+          "attack_recall": 0.9850746268656716,
+          "coverage": 0.9850746268656716
+        },
+        "normal": {
+          "flows": 66,
+          "correct_over_all": 0.2727272727272727,
+          "attack_recall": 0.0,
+          "coverage": 0.3181818181818182
+        },
+        "ransomware": {
+          "flows": 65,
+          "correct_over_all": 0.47692307692307695,
+          "attack_recall": 0.47692307692307695,
+          "coverage": 0.47692307692307695
+        },
+        "xss": {
+          "flows": 66,
+          "correct_over_all": 0.9696969696969697,
+          "attack_recall": 0.9696969696969697,
+          "coverage": 0.9696969696969697
+        },
+        "mitm": {
+          "flows": 3,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 0.0
+        }
+      }
+    },
+    "aegis/unsw_nb15/2000/binary": {
+      "method": "aegis",
+      "dataset": "unsw_nb15",
+      "dataset_size": 2000,
+      "task": "binary",
+      "detector_version": "a844e02d70ee9bea7381d22ea212a0cfcc77b6dff9d424dd419bce5d07338714",
+      "run_id": "20261031T080922.176350Z",
+      "model": "zeta-ids:qwen3-8b",
+      "seed": 17,
+      "investigation_model": "zeta-ids:qwen3-8b",
+      "parameters": {
+        "tree": {
+          "max_depth": 8,
+          "max_leaf_nodes": 64,
+          "min_samples_leaf": 100
+        },
+        "train_fraction": 0.7,
+        "binary_thresholds": {
+          "benign_max": 0.25,
+          "attack_min": 0.75
+        }
+      },
+      "dataset_sha256": "781c8009e89957a8b9b7be8d516918489382fd4c85977d88bf12ff2555740fe9",
+      "dataset_path": "data/UNSW_NB15.pkl",
+      "configuration_sha256": "099ffc5173b359b34a1cf54c80d5b24f71ea217d73fa5f7b1fecd1c93a4dc901",
+      "latency_scope": "flow_resolution",
+      "training_flows": 1335,
+      "incoming_flows": 665,
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "processed": 665,
+      "decision_sources": {
+        "dataplane": 404,
+        "llm_controller": 261
+      },
+      "decision_reasons": {
+        "bootstrap_tree": 404,
+        "insufficient_training_support": 227,
+        "model_neighbours_llm_agree": 34
+      },
+      "requested_flows": 665,
+      "completed": true,
+      "failure": null,
+      "final_decisions": {
+        "ATTACK": 294,
+        "UNCERTAIN": 227,
+        "BENIGN": 144
+      },
+      "errors": {},
+      "api_requests": {
+        "binary_llm": 259,
+        "investigation_llm": 32
+      },
+      "tokens": {
+        "input": 773408,
+        "output": 5964
+      },
+      "cache_hits": 2,
+      "memory_audits": 0,
+      "deep_reports_reused": 2,
+      "elapsed_seconds": 443.611888540996,
+      "mean_latency_ms": 666.6653579033131,
+      "max_latency_ms": 7473.733547987649,
+      "flows_per_second": 1.4990581117812956,
+      "updated_at": "2026-10-31T08:16:45.573059+00:00",
+      "metrics": {
+        "flows": 665,
+        "true_attacks": 366,
+        "true_benign": 299,
+        "true_positive": 280,
+        "true_negative": 143,
+        "false_positive": 14,
+        "false_negative_benign": 1,
+        "uncertain_attacks": 85,
+        "uncertain_benign": 142,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.6360902255639098,
+        "resolved_accuracy": 0.9657534246575342,
+        "coverage": 0.6586466165413534,
+        "attack_precision": 0.9523809523809523,
+        "attack_recall": 0.7650273224043715,
+        "attack_f1": 0.8484848484848485,
+        "false_positive_rate": 0.046822742474916385
+      },
+      "by_family": {
+        "Exploits": {
+          "flows": 90,
+          "correct_over_all": 0.7111111111111111,
+          "attack_recall": 0.7111111111111111,
+          "coverage": 0.7111111111111111
+        },
+        "DoS": {
+          "flows": 33,
+          "correct_over_all": 0.7272727272727273,
+          "attack_recall": 0.7272727272727273,
+          "coverage": 0.7575757575757576
+        },
+        "Fuzzers": {
+          "flows": 49,
+          "correct_over_all": 0.30612244897959184,
+          "attack_recall": 0.30612244897959184,
+          "coverage": 0.30612244897959184
+        },
+        "Reconnaissance": {
+          "flows": 28,
+          "correct_over_all": 0.75,
+          "attack_recall": 0.75,
+          "coverage": 0.75
+        },
+        "Shellcode": {
+          "flows": 3,
+          "correct_over_all": 0.6666666666666666,
+          "attack_recall": 0.6666666666666666,
+          "coverage": 0.6666666666666666
+        },
+        "Generic": {
+          "flows": 152,
+          "correct_over_all": 0.9473684210526315,
+          "attack_recall": 0.9473684210526315,
+          "coverage": 0.9473684210526315
+        },
+        "Normal": {
+          "flows": 299,
+          "correct_over_all": 0.4782608695652174,
+          "attack_recall": 0.0,
+          "coverage": 0.5250836120401338
+        },
+        "Backdoor": {
+          "flows": 5,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Analysis": {
+          "flows": 5,
+          "correct_over_all": 0.8,
+          "attack_recall": 0.8,
+          "coverage": 0.8
+        },
+        "Worms": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "rlfe_ids/kdd/2000/binary": {
+      "method": "rlfe_ids",
+      "dataset": "kdd",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1118,
+      "validation_flows": 280,
+      "requested_flows": 602,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": null,
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 602,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.9450662251655629,
+        "macro_recall": 0.947451646193282,
+        "macro_f1": 0.9451025906735752,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 602
+      },
+      "tokens": {
+        "input": 825769,
+        "output": 74045
+      },
+      "cache_hits": 0,
+      "construction_seconds": 10.152729107998312,
+      "construction_api_requests": {},
+      "elapsed_seconds": 2732.7260751200083,
+      "method_statistics": {
+        "reference_entries": 802,
+        "predicted_label_updates": 602,
+        "device": "cuda"
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T081755.511846Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "f4d6571c50cc12a96e0f9ad154cbcd3b63fdc499219089e84b501005892e28ca",
+      "dataset_path": "data/KDD.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "device": "cuda",
+        "epochs": 150,
+        "batch_size": 32,
+        "learning_rate": 0.001,
+        "prototypes_per_class": 32,
+        "references_per_class": 100,
+        "retrieval_k": 3,
+        "distance": "euclidean"
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 4522.267442711528,
+      "max_latency_ms": 7802.0185040077195,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.22029284438015362,
+      "updated_at": "2026-10-31T09:03:27.634693+00:00",
+      "metrics": {
+        "flows": 602,
+        "true_attacks": 279,
+        "true_benign": 323,
+        "true_positive": 273,
+        "true_negative": 296,
+        "false_positive": 27,
+        "false_negative_benign": 6,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.9451827242524917,
+        "resolved_accuracy": 0.9451827242524917,
+        "coverage": 1.0,
+        "attack_precision": 0.91,
+        "attack_recall": 0.978494623655914,
+        "attack_f1": 0.9430051813471503,
+        "false_positive_rate": 0.08359133126934984
+      },
+      "by_family": {
+        "DoS": {
+          "flows": 219,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "normal": {
+          "flows": 323,
+          "correct_over_all": 0.9164086687306502,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Probe": {
+          "flows": 55,
+          "correct_over_all": 0.9454545454545454,
+          "attack_recall": 0.9454545454545454,
+          "coverage": 1.0
+        },
+        "R2L": {
+          "flows": 4,
+          "correct_over_all": 0.25,
+          "attack_recall": 0.25,
+          "coverage": 1.0
+        },
+        "U2R": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "rlfe_ids/cicids2018/2000/binary": {
+      "method": "rlfe_ids",
+      "dataset": "cicids2018",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1129,
+      "validation_flows": 276,
+      "requested_flows": 595,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": null,
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 595,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.9837662337662338,
+        "macro_recall": 0.9831649831649831,
+        "macro_f1": 0.9831875310818754,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 595
+      },
+      "tokens": {
+        "input": 1277662,
+        "output": 59266
+      },
+      "cache_hits": 0,
+      "construction_seconds": 10.27421346900519,
+      "construction_api_requests": {},
+      "elapsed_seconds": 2439.8432774039975,
+      "method_statistics": {
+        "reference_entries": 795,
+        "predicted_label_updates": 595,
+        "device": "cuda"
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T090329.236054Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "79aea7ddd809eb5099e5f06d29346c76b744d6a210f3105461a6a65887b3d6b5",
+      "dataset_path": "data/CICIDS2018.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "device": "cuda",
+        "epochs": 150,
+        "batch_size": 32,
+        "learning_rate": 0.001,
+        "prototypes_per_class": 32,
+        "references_per_class": 100,
+        "retrieval_k": 3,
+        "distance": "euclidean"
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 4083.028353487795,
+      "max_latency_ms": 9312.650919979205,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.24386812280544604,
+      "updated_at": "2026-10-31T09:44:08.467894+00:00",
+      "metrics": {
+        "flows": 595,
+        "true_attacks": 297,
+        "true_benign": 298,
+        "true_positive": 287,
+        "true_negative": 298,
+        "false_positive": 0,
+        "false_negative_benign": 10,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.9831932773109243,
+        "resolved_accuracy": 0.9831932773109243,
+        "coverage": 1.0,
+        "attack_precision": 1.0,
+        "attack_recall": 0.9663299663299664,
+        "attack_f1": 0.9828767123287672,
+        "false_positive_rate": 0.0
+      },
+      "by_family": {
+        "BENIGN": {
+          "flows": 298,
+          "correct_over_all": 1.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Botnet": {
+          "flows": 40,
+          "correct_over_all": 0.975,
+          "attack_recall": 0.975,
+          "coverage": 1.0
+        },
+        "DoS Hulk": {
+          "flows": 40,
+          "correct_over_all": 0.925,
+          "attack_recall": 0.925,
+          "coverage": 1.0
+        },
+        "Port Scanning": {
+          "flows": 31,
+          "correct_over_all": 0.9032258064516129,
+          "attack_recall": 0.9032258064516129,
+          "coverage": 1.0
+        },
+        "DoS GoldenEye": {
+          "flows": 40,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "DoS Slow": {
+          "flows": 16,
+          "correct_over_all": 0.9375,
+          "attack_recall": 0.9375,
+          "coverage": 1.0
+        },
+        "Web Attack": {
+          "flows": 1,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "DDoS": {
+          "flows": 87,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Brute Force": {
+          "flows": 41,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Infiltration": {
+          "flows": 1,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "rlfe_ids/ton_iot/2000/binary": {
+      "method": "rlfe_ids",
+      "dataset": "ton_iot",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1115,
+      "validation_flows": 287,
+      "requested_flows": 598,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": null,
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 598,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.5877964482409801,
+        "macro_recall": 0.6779733424470267,
+        "macro_f1": 0.5908902691511387,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 598
+      },
+      "tokens": {
+        "input": 585878,
+        "output": 61342
+      },
+      "cache_hits": 0,
+      "construction_seconds": 10.127801629016176,
+      "construction_api_requests": {},
+      "elapsed_seconds": 2238.1232276600203,
+      "method_statistics": {
+        "reference_entries": 798,
+        "predicted_label_updates": 598,
+        "device": "cuda"
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T094410.121271Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "a05c856293b7ec4b11d57dace461c371199fdf7a4d683ad77e0be1eff2baafa6",
+      "dataset_path": "data/TON-IOT.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "device": "cuda",
+        "epochs": 150,
+        "batch_size": 32,
+        "learning_rate": 0.001,
+        "prototypes_per_class": 32,
+        "references_per_class": 100,
+        "retrieval_k": 3,
+        "distance": "euclidean"
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 3725.467226922594,
+      "max_latency_ms": 7371.579805010697,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.2671881479132026,
+      "updated_at": "2026-10-31T10:21:27.604860+00:00",
+      "metrics": {
+        "flows": 598,
+        "true_attacks": 532,
+        "true_benign": 66,
+        "true_positive": 407,
+        "true_negative": 39,
+        "false_positive": 27,
+        "false_negative_benign": 125,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.745819397993311,
+        "resolved_accuracy": 0.745819397993311,
+        "coverage": 1.0,
+        "attack_precision": 0.9377880184331797,
+        "attack_recall": 0.7650375939849624,
+        "attack_f1": 0.8426501035196687,
+        "false_positive_rate": 0.4090909090909091
+      },
+      "by_family": {
+        "scanning": {
+          "flows": 68,
+          "correct_over_all": 0.47058823529411764,
+          "attack_recall": 0.47058823529411764,
+          "coverage": 1.0
+        },
+        "dos": {
+          "flows": 65,
+          "correct_over_all": 0.8769230769230769,
+          "attack_recall": 0.8769230769230769,
+          "coverage": 1.0
+        },
+        "backdoor": {
+          "flows": 66,
+          "correct_over_all": 0.8787878787878788,
+          "attack_recall": 0.8787878787878788,
+          "coverage": 1.0
+        },
+        "ddos": {
+          "flows": 65,
+          "correct_over_all": 0.7846153846153846,
+          "attack_recall": 0.7846153846153846,
+          "coverage": 1.0
+        },
+        "password": {
+          "flows": 67,
+          "correct_over_all": 0.8805970149253731,
+          "attack_recall": 0.8805970149253731,
+          "coverage": 1.0
+        },
+        "injection": {
+          "flows": 67,
+          "correct_over_all": 0.7910447761194029,
+          "attack_recall": 0.7910447761194029,
+          "coverage": 1.0
+        },
+        "normal": {
+          "flows": 66,
+          "correct_over_all": 0.5909090909090909,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "ransomware": {
+          "flows": 65,
+          "correct_over_all": 0.7230769230769231,
+          "attack_recall": 0.7230769230769231,
+          "coverage": 1.0
+        },
+        "xss": {
+          "flows": 66,
+          "correct_over_all": 0.7424242424242424,
+          "attack_recall": 0.7424242424242424,
+          "coverage": 1.0
+        },
+        "mitm": {
+          "flows": 3,
+          "correct_over_all": 0.3333333333333333,
+          "attack_recall": 0.3333333333333333,
+          "coverage": 1.0
+        }
+      }
+    },
+    "rlfe_ids/unsw_nb15/2000/binary": {
+      "method": "rlfe_ids",
+      "dataset": "unsw_nb15",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1063,
+      "validation_flows": 272,
+      "requested_flows": 665,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": null,
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 665,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.8395490640952921,
+        "macro_recall": 0.7619524096715828,
+        "macro_f1": 0.764279245170965,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {
+        "incomplete_response": 1
+      },
+      "api_requests": {
+        "baseline_llm": 665
+      },
+      "tokens": {
+        "input": 1012467,
+        "output": 75583
+      },
+      "cache_hits": 0,
+      "construction_seconds": 9.834230476000812,
+      "construction_api_requests": {},
+      "elapsed_seconds": 2889.715192153002,
+      "method_statistics": {
+        "reference_entries": 864,
+        "predicted_label_updates": 664,
+        "device": "cuda"
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T102129.207560Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "781c8009e89957a8b9b7be8d516918489382fd4c85977d88bf12ff2555740fe9",
+      "dataset_path": "data/UNSW_NB15.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "device": "cuda",
+        "epochs": 150,
+        "batch_size": 32,
+        "learning_rate": 0.001,
+        "prototypes_per_class": 32,
+        "references_per_class": 100,
+        "retrieval_k": 3,
+        "distance": "euclidean"
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 4330.316770145502,
+      "max_latency_ms": 17806.37239999487,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.2301264850618504,
+      "updated_at": "2026-10-31T11:09:38.309822+00:00",
+      "metrics": {
+        "flows": 665,
+        "true_attacks": 366,
+        "true_benign": 299,
+        "true_positive": 357,
+        "true_negative": 164,
+        "false_positive": 135,
+        "false_negative_benign": 8,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 1,
+        "error_benign": 0,
+        "correct_over_all": 0.7834586466165413,
+        "resolved_accuracy": 0.7846385542168675,
+        "coverage": 0.9984962406015038,
+        "attack_precision": 0.725609756097561,
+        "attack_recall": 0.9754098360655737,
+        "attack_f1": 0.8321678321678323,
+        "false_positive_rate": 0.451505016722408
+      },
+      "by_family": {
+        "Exploits": {
+          "flows": 90,
+          "correct_over_all": 0.9777777777777777,
+          "attack_recall": 0.9777777777777777,
+          "coverage": 1.0
+        },
+        "DoS": {
+          "flows": 33,
+          "correct_over_all": 0.9696969696969697,
+          "attack_recall": 0.9696969696969697,
+          "coverage": 1.0
+        },
+        "Fuzzers": {
+          "flows": 49,
+          "correct_over_all": 0.8979591836734694,
+          "attack_recall": 0.8979591836734694,
+          "coverage": 0.9795918367346939
+        },
+        "Reconnaissance": {
+          "flows": 28,
+          "correct_over_all": 0.9642857142857143,
+          "attack_recall": 0.9642857142857143,
+          "coverage": 1.0
+        },
+        "Shellcode": {
+          "flows": 3,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Generic": {
+          "flows": 152,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Normal": {
+          "flows": 299,
+          "correct_over_all": 0.5484949832775919,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Backdoor": {
+          "flows": 5,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Analysis": {
+          "flows": 5,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Worms": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "scala_nids/kdd/2000/binary": {
+      "method": "scala_nids",
+      "dataset": "kdd",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1118,
+      "validation_flows": 280,
+      "requested_flows": 602,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": null,
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 602,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.9084429824561403,
+        "macro_recall": 0.9050845012594738,
+        "macro_f1": 0.8986238215523071,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 1
+      },
+      "tokens": {
+        "input": 279,
+        "output": 17
+      },
+      "cache_hits": 0,
+      "construction_seconds": 1.3257326089951675,
+      "construction_api_requests": {},
+      "elapsed_seconds": 2.1910941649985034,
+      "method_statistics": {
+        "chunks": 1,
+        "accepted_updates": 0,
+        "rejected_updates": 0,
+        "advisor_fallbacks": 0
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T111033.560286Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "f4d6571c50cc12a96e0f9ad154cbcd3b63fdc499219089e84b501005892e28ca",
+      "dataset_path": "data/KDD.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "chunk_size": 4000,
+        "buffer_size": 2000,
+        "batch_size": 128,
+        "domain_epochs": 3,
+        "reconstruction_epochs": 5,
+        "joint_epochs": 10,
+        "learning_rate": 0.001,
+        "inspection_period": 5,
+        "domain_threshold": 0.65,
+        "confidence_threshold": 0.8,
+        "distribution_pvalue": 0.05,
+        "unknown_threshold": 1.0,
+        "buffer_unknown_max": 0.8,
+        "buffer_confidence_min": 0.9,
+        "buffer_entropy_max": 0.35,
+        "reconstruction_quantile": 0.95,
+        "anomaly_alpha": 0.5,
+        "anomaly_threshold": 0.5,
+        "gradient_clip": 1.0,
+        "loss_ratio_max": 1.1,
+        "source_accuracy_tolerance": 0.01,
+        "confidence_tolerance": 0.02,
+        "prediction_entropy_min": 0.05,
+        "unknown_rate_tolerance": 0.05
+      },
+      "configuration_sha256": "30b1065ed523a10968e508a9cd019748e40b44a4f5dec6f0577e2c7d6a9bd844",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 1.422822016637074,
+      "max_latency_ms": 1.4228220166370855,
+      "latency_scope": "chunk_prediction_and_adaptation_amortized",
+      "flows_per_second": 274.7485752171729,
+      "updated_at": "2026-10-31T11:10:35.153884+00:00",
+      "metrics": {
+        "flows": 602,
+        "true_attacks": 279,
+        "true_benign": 323,
+        "true_positive": 277,
+        "true_negative": 264,
+        "false_positive": 59,
+        "false_negative_benign": 2,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.8986710963455149,
+        "resolved_accuracy": 0.8986710963455149,
+        "coverage": 1.0,
+        "attack_precision": 0.8244047619047619,
+        "attack_recall": 0.992831541218638,
+        "attack_f1": 0.9008130081300811,
+        "false_positive_rate": 0.1826625386996904
+      },
+      "by_family": {
+        "DoS": {
+          "flows": 219,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "normal": {
+          "flows": 323,
+          "correct_over_all": 0.8173374613003096,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Probe": {
+          "flows": 55,
+          "correct_over_all": 0.9818181818181818,
+          "attack_recall": 0.9818181818181818,
+          "coverage": 1.0
+        },
+        "R2L": {
+          "flows": 4,
+          "correct_over_all": 0.75,
+          "attack_recall": 0.75,
+          "coverage": 1.0
+        },
+        "U2R": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "scala_nids/cicids2018/2000/binary": {
+      "method": "scala_nids",
+      "dataset": "cicids2018",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1129,
+      "validation_flows": 276,
+      "requested_flows": 595,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": null,
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 595,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.7681254609144543,
+        "macro_recall": 0.7629087293516823,
+        "macro_f1": 0.7618385231405124,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 1
+      },
+      "tokens": {
+        "input": 282,
+        "output": 17
+      },
+      "cache_hits": 0,
+      "construction_seconds": 1.275760394986719,
+      "construction_api_requests": {},
+      "elapsed_seconds": 1.9969668760022614,
+      "method_statistics": {
+        "chunks": 1,
+        "accepted_updates": 0,
+        "rejected_updates": 0,
+        "advisor_fallbacks": 0
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T111036.657103Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "79aea7ddd809eb5099e5f06d29346c76b744d6a210f3105461a6a65887b3d6b5",
+      "dataset_path": "data/CICIDS2018.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "chunk_size": 4000,
+        "buffer_size": 2000,
+        "batch_size": 128,
+        "domain_epochs": 3,
+        "reconstruction_epochs": 5,
+        "joint_epochs": 10,
+        "learning_rate": 0.001,
+        "inspection_period": 5,
+        "domain_threshold": 0.65,
+        "confidence_threshold": 0.8,
+        "distribution_pvalue": 0.05,
+        "unknown_threshold": 1.0,
+        "buffer_unknown_max": 0.8,
+        "buffer_confidence_min": 0.9,
+        "buffer_entropy_max": 0.35,
+        "reconstruction_quantile": 0.95,
+        "anomaly_alpha": 0.5,
+        "anomaly_threshold": 0.5,
+        "gradient_clip": 1.0,
+        "loss_ratio_max": 1.1,
+        "source_accuracy_tolerance": 0.01,
+        "confidence_tolerance": 0.02,
+        "prediction_entropy_min": 0.05,
+        "unknown_rate_tolerance": 0.05
+      },
+      "configuration_sha256": "30b1065ed523a10968e508a9cd019748e40b44a4f5dec6f0577e2c7d6a9bd844",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 1.1919035714221329,
+      "max_latency_ms": 1.1919035714221413,
+      "latency_scope": "chunk_prediction_and_adaptation_amortized",
+      "flows_per_second": 297.95186247211757,
+      "updated_at": "2026-10-31T11:10:38.053542+00:00",
+      "metrics": {
+        "flows": 595,
+        "true_attacks": 297,
+        "true_benign": 298,
+        "true_positive": 206,
+        "true_negative": 248,
+        "false_positive": 50,
+        "false_negative_benign": 91,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.7630252100840336,
+        "resolved_accuracy": 0.7630252100840336,
+        "coverage": 1.0,
+        "attack_precision": 0.8046875,
+        "attack_recall": 0.6936026936026936,
+        "attack_f1": 0.7450271247739603,
+        "false_positive_rate": 0.16778523489932887
+      },
+      "by_family": {
+        "BENIGN": {
+          "flows": 298,
+          "correct_over_all": 0.8322147651006712,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Botnet": {
+          "flows": 40,
+          "correct_over_all": 0.15,
+          "attack_recall": 0.15,
+          "coverage": 1.0
+        },
+        "DoS Hulk": {
+          "flows": 40,
+          "correct_over_all": 0.55,
+          "attack_recall": 0.55,
+          "coverage": 1.0
+        },
+        "Port Scanning": {
+          "flows": 31,
+          "correct_over_all": 0.9354838709677419,
+          "attack_recall": 0.9354838709677419,
+          "coverage": 1.0
+        },
+        "DoS GoldenEye": {
+          "flows": 40,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "DoS Slow": {
+          "flows": 16,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Web Attack": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "DDoS": {
+          "flows": 87,
+          "correct_over_all": 0.5747126436781609,
+          "attack_recall": 0.5747126436781609,
+          "coverage": 1.0
+        },
+        "Brute Force": {
+          "flows": 41,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Infiltration": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "scala_nids/ton_iot/2000/binary": {
+      "method": "scala_nids",
+      "dataset": "ton_iot",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1115,
+      "validation_flows": 287,
+      "requested_flows": 598,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": null,
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 598,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.5259771076033039,
+        "macro_recall": 0.5654761904761905,
+        "macro_f1": 0.4197569493828916,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 1
+      },
+      "tokens": {
+        "input": 280,
+        "output": 17
+      },
+      "cache_hits": 0,
+      "construction_seconds": 1.242666537000332,
+      "construction_api_requests": {},
+      "elapsed_seconds": 1.9521606980124488,
+      "method_statistics": {
+        "chunks": 1,
+        "accepted_updates": 0,
+        "rejected_updates": 0,
+        "advisor_fallbacks": 0
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T111039.576785Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "a05c856293b7ec4b11d57dace461c371199fdf7a4d683ad77e0be1eff2baafa6",
+      "dataset_path": "data/TON-IOT.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "chunk_size": 4000,
+        "buffer_size": 2000,
+        "batch_size": 128,
+        "domain_epochs": 3,
+        "reconstruction_epochs": 5,
+        "joint_epochs": 10,
+        "learning_rate": 0.001,
+        "inspection_period": 5,
+        "domain_threshold": 0.65,
+        "confidence_threshold": 0.8,
+        "distribution_pvalue": 0.05,
+        "unknown_threshold": 1.0,
+        "buffer_unknown_max": 0.8,
+        "buffer_confidence_min": 0.9,
+        "buffer_entropy_max": 0.35,
+        "reconstruction_quantile": 0.95,
+        "anomaly_alpha": 0.5,
+        "anomaly_threshold": 0.5,
+        "gradient_clip": 1.0,
+        "loss_ratio_max": 1.1,
+        "source_accuracy_tolerance": 0.01,
+        "confidence_tolerance": 0.02,
+        "prediction_entropy_min": 0.05,
+        "unknown_rate_tolerance": 0.05
+      },
+      "configuration_sha256": "30b1065ed523a10968e508a9cd019748e40b44a4f5dec6f0577e2c7d6a9bd844",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 1.167972877932737,
+      "max_latency_ms": 1.1679728779327405,
+      "latency_scope": "chunk_prediction_and_adaptation_amortized",
+      "flows_per_second": 306.32724068712224,
+      "updated_at": "2026-10-31T11:10:40.932264+00:00",
+      "metrics": {
+        "flows": 598,
+        "true_attacks": 532,
+        "true_benign": 66,
+        "true_positive": 247,
+        "true_negative": 44,
+        "false_positive": 22,
+        "false_negative_benign": 285,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.4866220735785953,
+        "resolved_accuracy": 0.4866220735785953,
+        "coverage": 1.0,
+        "attack_precision": 0.9182156133828996,
+        "attack_recall": 0.4642857142857143,
+        "attack_f1": 0.616729088639201,
+        "false_positive_rate": 0.3333333333333333
+      },
+      "by_family": {
+        "scanning": {
+          "flows": 68,
+          "correct_over_all": 0.029411764705882353,
+          "attack_recall": 0.029411764705882353,
+          "coverage": 1.0
+        },
+        "dos": {
+          "flows": 65,
+          "correct_over_all": 0.015384615384615385,
+          "attack_recall": 0.015384615384615385,
+          "coverage": 1.0
+        },
+        "backdoor": {
+          "flows": 66,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "ddos": {
+          "flows": 65,
+          "correct_over_all": 0.7230769230769231,
+          "attack_recall": 0.7230769230769231,
+          "coverage": 1.0
+        },
+        "password": {
+          "flows": 67,
+          "correct_over_all": 0.835820895522388,
+          "attack_recall": 0.835820895522388,
+          "coverage": 1.0
+        },
+        "injection": {
+          "flows": 67,
+          "correct_over_all": 0.9402985074626866,
+          "attack_recall": 0.9402985074626866,
+          "coverage": 1.0
+        },
+        "normal": {
+          "flows": 66,
+          "correct_over_all": 0.6666666666666666,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "ransomware": {
+          "flows": 65,
+          "correct_over_all": 0.2,
+          "attack_recall": 0.2,
+          "coverage": 1.0
+        },
+        "xss": {
+          "flows": 66,
+          "correct_over_all": 0.9393939393939394,
+          "attack_recall": 0.9393939393939394,
+          "coverage": 1.0
+        },
+        "mitm": {
+          "flows": 3,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "scala_nids/unsw_nb15/2000/binary": {
+      "method": "scala_nids",
+      "dataset": "unsw_nb15",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1063,
+      "validation_flows": 272,
+      "requested_flows": 665,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": null,
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 665,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.8141381529982097,
+        "macro_recall": 0.7854094705484584,
+        "macro_f1": 0.7892902408111534,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 1
+      },
+      "tokens": {
+        "input": 281,
+        "output": 17
+      },
+      "cache_hits": 0,
+      "construction_seconds": 1.2403724209871143,
+      "construction_api_requests": {},
+      "elapsed_seconds": 1.9677276450092904,
+      "method_statistics": {
+        "chunks": 1,
+        "accepted_updates": 1,
+        "rejected_updates": 0,
+        "advisor_fallbacks": 0
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T111042.456555Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "781c8009e89957a8b9b7be8d516918489382fd4c85977d88bf12ff2555740fe9",
+      "dataset_path": "data/UNSW_NB15.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "chunk_size": 4000,
+        "buffer_size": 2000,
+        "batch_size": 128,
+        "domain_epochs": 3,
+        "reconstruction_epochs": 5,
+        "joint_epochs": 10,
+        "learning_rate": 0.001,
+        "inspection_period": 5,
+        "domain_threshold": 0.65,
+        "confidence_threshold": 0.8,
+        "distribution_pvalue": 0.05,
+        "unknown_threshold": 1.0,
+        "buffer_unknown_max": 0.8,
+        "buffer_confidence_min": 0.9,
+        "buffer_entropy_max": 0.35,
+        "reconstruction_quantile": 0.95,
+        "anomaly_alpha": 0.5,
+        "anomaly_threshold": 0.5,
+        "gradient_clip": 1.0,
+        "loss_ratio_max": 1.1,
+        "source_accuracy_tolerance": 0.01,
+        "confidence_tolerance": 0.02,
+        "prediction_entropy_min": 0.05,
+        "unknown_rate_tolerance": 0.05
+      },
+      "configuration_sha256": "30b1065ed523a10968e508a9cd019748e40b44a4f5dec6f0577e2c7d6a9bd844",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 1.0794753669165802,
+      "max_latency_ms": 1.0794753669165915,
+      "latency_scope": "chunk_prediction_and_adaptation_amortized",
+      "flows_per_second": 337.95327401463646,
+      "updated_at": "2026-10-31T11:10:43.833689+00:00",
+      "metrics": {
+        "flows": 665,
+        "true_attacks": 366,
+        "true_benign": 299,
+        "true_positive": 335,
+        "true_negative": 196,
+        "false_positive": 103,
+        "false_negative_benign": 31,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.7984962406015037,
+        "resolved_accuracy": 0.7984962406015037,
+        "coverage": 1.0,
+        "attack_precision": 0.7648401826484018,
+        "attack_recall": 0.9153005464480874,
+        "attack_f1": 0.8333333333333334,
+        "false_positive_rate": 0.34448160535117056
+      },
+      "by_family": {
+        "Exploits": {
+          "flows": 90,
+          "correct_over_all": 0.9222222222222223,
+          "attack_recall": 0.9222222222222223,
+          "coverage": 1.0
+        },
+        "DoS": {
+          "flows": 33,
+          "correct_over_all": 0.9696969696969697,
+          "attack_recall": 0.9696969696969697,
+          "coverage": 1.0
+        },
+        "Fuzzers": {
+          "flows": 49,
+          "correct_over_all": 0.673469387755102,
+          "attack_recall": 0.673469387755102,
+          "coverage": 1.0
+        },
+        "Reconnaissance": {
+          "flows": 28,
+          "correct_over_all": 0.8214285714285714,
+          "attack_recall": 0.8214285714285714,
+          "coverage": 1.0
+        },
+        "Shellcode": {
+          "flows": 3,
+          "correct_over_all": 0.6666666666666666,
+          "attack_recall": 0.6666666666666666,
+          "coverage": 1.0
+        },
+        "Generic": {
+          "flows": 152,
+          "correct_over_all": 0.993421052631579,
+          "attack_recall": 0.993421052631579,
+          "coverage": 1.0
+        },
+        "Normal": {
+          "flows": 299,
+          "correct_over_all": 0.6555183946488294,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Backdoor": {
+          "flows": 5,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Analysis": {
+          "flows": 5,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Worms": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "ma_ids/kdd/2000/binary": {
+      "method": "ma_ids",
+      "dataset": "kdd",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1118,
+      "validation_flows": 280,
+      "requested_flows": 602,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 602,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.8765565120799779,
+        "macro_recall": 0.8761720873974944,
+        "macro_f1": 0.8763544719779732,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 1856
+      },
+      "tokens": {
+        "input": 928478,
+        "output": 193200
+      },
+      "cache_hits": 0,
+      "construction_seconds": 4337.710761895985,
+      "construction_api_requests": {
+        "baseline_llm": 1254
+      },
+      "elapsed_seconds": 6581.641624174983,
+      "method_statistics": {
+        "construction": {
+          "processed": 1118,
+          "errors": 0,
+          "misclassified": 136,
+          "rules_admitted": 136,
+          "rules_queued": 0
+        },
+        "active_rules": 136,
+        "library_frozen": true
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T111055.285931Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "f4d6571c50cc12a96e0f9ad154cbcd3b63fdc499219089e84b501005892e28ca",
+      "dataset_path": "data/KDD.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "similarity_threshold": 0.7
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 3727.044176940675,
+      "max_latency_ms": 7902.592465979978,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.0914665419929274,
+      "updated_at": "2026-10-31T13:00:36.914594+00:00",
+      "metrics": {
+        "flows": 602,
+        "true_attacks": 279,
+        "true_benign": 323,
+        "true_positive": 241,
+        "true_negative": 287,
+        "false_positive": 36,
+        "false_negative_benign": 38,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.8770764119601329,
+        "resolved_accuracy": 0.8770764119601329,
+        "coverage": 1.0,
+        "attack_precision": 0.8700361010830325,
+        "attack_recall": 0.8637992831541219,
+        "attack_f1": 0.8669064748201438,
+        "false_positive_rate": 0.11145510835913312
+      },
+      "by_family": {
+        "DoS": {
+          "flows": 219,
+          "correct_over_all": 0.9269406392694064,
+          "attack_recall": 0.9269406392694064,
+          "coverage": 1.0
+        },
+        "normal": {
+          "flows": 323,
+          "correct_over_all": 0.8885448916408669,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Probe": {
+          "flows": 55,
+          "correct_over_all": 0.6545454545454545,
+          "attack_recall": 0.6545454545454545,
+          "coverage": 1.0
+        },
+        "R2L": {
+          "flows": 4,
+          "correct_over_all": 0.5,
+          "attack_recall": 0.5,
+          "coverage": 1.0
+        },
+        "U2R": {
+          "flows": 1,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "ma_ids/cicids2018/2000/binary": {
+      "method": "ma_ids",
+      "dataset": "cicids2018",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1129,
+      "validation_flows": 276,
+      "requested_flows": 595,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 595,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.5948909299655568,
+        "macro_recall": 0.5933834994237679,
+        "macro_f1": 0.5916984256612676,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 2159
+      },
+      "tokens": {
+        "input": 1456827,
+        "output": 177904
+      },
+      "cache_hits": 0,
+      "construction_seconds": 4389.593086092005,
+      "construction_api_requests": {
+        "baseline_llm": 1564
+      },
+      "elapsed_seconds": 6308.893184683024,
+      "method_statistics": {
+        "construction": {
+          "processed": 1129,
+          "errors": 0,
+          "misclassified": 435,
+          "rules_admitted": 435,
+          "rules_queued": 0
+        },
+        "active_rules": 435,
+        "library_frozen": true
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T130037.995138Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "79aea7ddd809eb5099e5f06d29346c76b744d6a210f3105461a6a65887b3d6b5",
+      "dataset_path": "data/CICIDS2018.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "similarity_threshold": 0.7
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 3225.314791804569,
+      "max_latency_ms": 6727.759967005113,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.09431131302786425,
+      "updated_at": "2026-10-31T14:45:46.874007+00:00",
+      "metrics": {
+        "flows": 595,
+        "true_attacks": 297,
+        "true_benign": 298,
+        "true_positive": 195,
+        "true_negative": 158,
+        "false_positive": 140,
+        "false_negative_benign": 102,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.5932773109243697,
+        "resolved_accuracy": 0.5932773109243697,
+        "coverage": 1.0,
+        "attack_precision": 0.582089552238806,
+        "attack_recall": 0.6565656565656566,
+        "attack_f1": 0.6170886075949367,
+        "false_positive_rate": 0.4697986577181208
+      },
+      "by_family": {
+        "BENIGN": {
+          "flows": 298,
+          "correct_over_all": 0.5302013422818792,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Botnet": {
+          "flows": 40,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "DoS Hulk": {
+          "flows": 40,
+          "correct_over_all": 0.725,
+          "attack_recall": 0.725,
+          "coverage": 1.0
+        },
+        "Port Scanning": {
+          "flows": 31,
+          "correct_over_all": 0.7096774193548387,
+          "attack_recall": 0.7096774193548387,
+          "coverage": 1.0
+        },
+        "DoS GoldenEye": {
+          "flows": 40,
+          "correct_over_all": 0.375,
+          "attack_recall": 0.375,
+          "coverage": 1.0
+        },
+        "DoS Slow": {
+          "flows": 16,
+          "correct_over_all": 0.125,
+          "attack_recall": 0.125,
+          "coverage": 1.0
+        },
+        "Web Attack": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "DDoS": {
+          "flows": 87,
+          "correct_over_all": 0.5632183908045977,
+          "attack_recall": 0.5632183908045977,
+          "coverage": 1.0
+        },
+        "Brute Force": {
+          "flows": 41,
+          "correct_over_all": 0.9024390243902439,
+          "attack_recall": 0.9024390243902439,
+          "coverage": 1.0
+        },
+        "Infiltration": {
+          "flows": 1,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "sera_ids/kdd/2000/binary": {
+      "method": "sera_ids",
+      "dataset": "kdd",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1118,
+      "validation_flows": 280,
+      "requested_flows": 602,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 602,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.3168218229053908,
+        "macro_recall": 0.35916641699124474,
+        "macro_f1": 0.3130467858501331,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 2395
+      },
+      "tokens": {
+        "input": 9887451,
+        "output": 311971
+      },
+      "cache_hits": 0,
+      "construction_seconds": 10043.287081063987,
+      "construction_api_requests": {
+        "baseline_llm": 1793
+      },
+      "elapsed_seconds": 14049.648630487005,
+      "method_statistics": {
+        "construction": {
+          "processed": 1118,
+          "errors": 1,
+          "misclassified": 675,
+          "rules_admitted": 597,
+          "rules_queued": 78
+        },
+        "active_rules": 597,
+        "library_frozen": true
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T191738.343617Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "f4d6571c50cc12a96e0f9ad154cbcd3b63fdc499219089e84b501005892e28ca",
+      "dataset_path": "data/KDD.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "candidate_pool": 20,
+        "retrieval_k": 5,
+        "signal_threshold": 0.5,
+        "admission_threshold": 0.8,
+        "confidence_backend": "training_proxy"
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 6654.347311364038,
+      "max_latency_ms": 12414.912432985147,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.04284804665461109,
+      "updated_at": "2026-10-31T23:11:47.979937+00:00",
+      "metrics": {
+        "flows": 602,
+        "true_attacks": 279,
+        "true_benign": 323,
+        "true_positive": 165,
+        "true_negative": 41,
+        "false_positive": 282,
+        "false_negative_benign": 114,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.34219269102990035,
+        "resolved_accuracy": 0.34219269102990035,
+        "coverage": 1.0,
+        "attack_precision": 0.3691275167785235,
+        "attack_recall": 0.5913978494623656,
+        "attack_f1": 0.4545454545454546,
+        "false_positive_rate": 0.8730650154798761
+      },
+      "by_family": {
+        "DoS": {
+          "flows": 219,
+          "correct_over_all": 0.502283105022831,
+          "attack_recall": 0.502283105022831,
+          "coverage": 1.0
+        },
+        "normal": {
+          "flows": 323,
+          "correct_over_all": 0.12693498452012383,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Probe": {
+          "flows": 55,
+          "correct_over_all": 0.9272727272727272,
+          "attack_recall": 0.9272727272727272,
+          "coverage": 1.0
+        },
+        "R2L": {
+          "flows": 4,
+          "correct_over_all": 0.75,
+          "attack_recall": 0.75,
+          "coverage": 1.0
+        },
+        "U2R": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "ma_ids/ton_iot/2000/binary": {
+      "method": "ma_ids",
+      "dataset": "ton_iot",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1115,
+      "validation_flows": 287,
+      "requested_flows": 598,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 598,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.7147769615671244,
+        "macro_recall": 0.7872807017543859,
+        "macro_f1": 0.7424961942710891,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 1828
+      },
+      "tokens": {
+        "input": 703726,
+        "output": 154667
+      },
+      "cache_hits": 0,
+      "construction_seconds": 3392.1930932630203,
+      "construction_api_requests": {
+        "baseline_llm": 1230
+      },
+      "elapsed_seconds": 5094.56877881402,
+      "method_statistics": {
+        "construction": {
+          "processed": 1115,
+          "errors": 0,
+          "misclassified": 115,
+          "rules_admitted": 115,
+          "rules_queued": 0
+        },
+        "active_rules": 115,
+        "library_frozen": true
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T144547.942427Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "a05c856293b7ec4b11d57dace461c371199fdf7a4d683ad77e0be1eff2baafa6",
+      "dataset_path": "data/TON-IOT.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "similarity_threshold": 0.7
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 2846.4202454410874,
+      "max_latency_ms": 6499.645858013537,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.11737990514267042,
+      "updated_at": "2026-10-31T16:10:42.496853+00:00",
+      "metrics": {
+        "flows": 598,
+        "true_attacks": 532,
+        "true_benign": 66,
+        "true_positive": 483,
+        "true_negative": 44,
+        "false_positive": 22,
+        "false_negative_benign": 49,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.8812709030100334,
+        "resolved_accuracy": 0.8812709030100334,
+        "coverage": 1.0,
+        "attack_precision": 0.9564356435643564,
+        "attack_recall": 0.9078947368421053,
+        "attack_f1": 0.931533269045323,
+        "false_positive_rate": 0.3333333333333333
+      },
+      "by_family": {
+        "scanning": {
+          "flows": 68,
+          "correct_over_all": 0.9852941176470589,
+          "attack_recall": 0.9852941176470589,
+          "coverage": 1.0
+        },
+        "dos": {
+          "flows": 65,
+          "correct_over_all": 0.9538461538461539,
+          "attack_recall": 0.9538461538461539,
+          "coverage": 1.0
+        },
+        "backdoor": {
+          "flows": 66,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "ddos": {
+          "flows": 65,
+          "correct_over_all": 0.8769230769230769,
+          "attack_recall": 0.8769230769230769,
+          "coverage": 1.0
+        },
+        "password": {
+          "flows": 67,
+          "correct_over_all": 0.9850746268656716,
+          "attack_recall": 0.9850746268656716,
+          "coverage": 1.0
+        },
+        "injection": {
+          "flows": 67,
+          "correct_over_all": 0.9552238805970149,
+          "attack_recall": 0.9552238805970149,
+          "coverage": 1.0
+        },
+        "normal": {
+          "flows": 66,
+          "correct_over_all": 0.6666666666666666,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "ransomware": {
+          "flows": 65,
+          "correct_over_all": 0.9384615384615385,
+          "attack_recall": 0.9384615384615385,
+          "coverage": 1.0
+        },
+        "xss": {
+          "flows": 66,
+          "correct_over_all": 0.5757575757575758,
+          "attack_recall": 0.5757575757575758,
+          "coverage": 1.0
+        },
+        "mitm": {
+          "flows": 3,
+          "correct_over_all": 0.6666666666666666,
+          "attack_recall": 0.6666666666666666,
+          "coverage": 1.0
+        }
+      }
+    },
+    "ma_ids/unsw_nb15/2000/binary": {
+      "method": "ma_ids",
+      "dataset": "unsw_nb15",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1063,
+      "validation_flows": 272,
+      "requested_flows": 665,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 665,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.6139923853541189,
+        "macro_recall": 0.6099841000054828,
+        "macro_f1": 0.6100104541166271,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 2014
+      },
+      "tokens": {
+        "input": 1039194,
+        "output": 159264
+      },
+      "cache_hits": 0,
+      "construction_seconds": 3474.2522840440215,
+      "construction_api_requests": {
+        "baseline_llm": 1349
+      },
+      "elapsed_seconds": 5390.620506567007,
+      "method_statistics": {
+        "construction": {
+          "processed": 1063,
+          "errors": 0,
+          "misclassified": 286,
+          "rules_admitted": 286,
+          "rules_queued": 0
+        },
+        "active_rules": 286,
+        "library_frozen": true
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T161043.514620Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "781c8009e89957a8b9b7be8d516918489382fd4c85977d88bf12ff2555740fe9",
+      "dataset_path": "data/UNSW_NB15.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "similarity_threshold": 0.7
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 2881.3497978315995,
+      "max_latency_ms": 6770.9709359915,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.1233624216711004,
+      "updated_at": "2026-10-31T17:40:34.124346+00:00",
+      "metrics": {
+        "flows": 665,
+        "true_attacks": 366,
+        "true_benign": 299,
+        "true_positive": 258,
+        "true_negative": 154,
+        "false_positive": 145,
+        "false_negative_benign": 108,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.6195488721804512,
+        "resolved_accuracy": 0.6195488721804512,
+        "coverage": 1.0,
+        "attack_precision": 0.6401985111662531,
+        "attack_recall": 0.7049180327868853,
+        "attack_f1": 0.6710013003901171,
+        "false_positive_rate": 0.48494983277591974
+      },
+      "by_family": {
+        "Exploits": {
+          "flows": 90,
+          "correct_over_all": 0.6555555555555556,
+          "attack_recall": 0.6555555555555556,
+          "coverage": 1.0
+        },
+        "DoS": {
+          "flows": 33,
+          "correct_over_all": 0.5757575757575758,
+          "attack_recall": 0.5757575757575758,
+          "coverage": 1.0
+        },
+        "Fuzzers": {
+          "flows": 49,
+          "correct_over_all": 0.7142857142857143,
+          "attack_recall": 0.7142857142857143,
+          "coverage": 1.0
+        },
+        "Reconnaissance": {
+          "flows": 28,
+          "correct_over_all": 0.75,
+          "attack_recall": 0.75,
+          "coverage": 1.0
+        },
+        "Shellcode": {
+          "flows": 3,
+          "correct_over_all": 0.6666666666666666,
+          "attack_recall": 0.6666666666666666,
+          "coverage": 1.0
+        },
+        "Generic": {
+          "flows": 152,
+          "correct_over_all": 0.743421052631579,
+          "attack_recall": 0.743421052631579,
+          "coverage": 1.0
+        },
+        "Normal": {
+          "flows": 299,
+          "correct_over_all": 0.5150501672240803,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Backdoor": {
+          "flows": 5,
+          "correct_over_all": 0.8,
+          "attack_recall": 0.8,
+          "coverage": 1.0
+        },
+        "Analysis": {
+          "flows": 5,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "Worms": {
+          "flows": 1,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "sera_ids/cicids2018/2000/binary": {
+      "method": "sera_ids",
+      "dataset": "cicids2018",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1129,
+      "validation_flows": 276,
+      "requested_flows": 595,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 595,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.6786114221724524,
+        "macro_recall": 0.6450240661650057,
+        "macro_f1": 0.6293164764038551,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {
+        "incomplete_response": 1
+      },
+      "api_requests": {
+        "baseline_llm": 2124
+      },
+      "tokens": {
+        "input": 11218109,
+        "output": 213813
+      },
+      "cache_hits": 0,
+      "construction_seconds": 7984.333899323014,
+      "construction_api_requests": {
+        "baseline_llm": 1529
+      },
+      "elapsed_seconds": 11337.867374091002,
+      "method_statistics": {
+        "construction": {
+          "processed": 1129,
+          "errors": 2,
+          "misclassified": 400,
+          "rules_admitted": 370,
+          "rules_queued": 30
+        },
+        "active_rules": 370,
+        "library_frozen": true
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261031T231149.068240Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "79aea7ddd809eb5099e5f06d29346c76b744d6a210f3105461a6a65887b3d6b5",
+      "dataset_path": "data/CICIDS2018.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "candidate_pool": 20,
+        "retrieval_k": 5,
+        "signal_threshold": 0.5,
+        "admission_threshold": 0.8,
+        "confidence_backend": "training_proxy"
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 5635.5257620663715,
+      "max_latency_ms": 19592.695946019376,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.05247900512222241,
+      "updated_at": "2026-11-01T02:20:46.921160+00:00",
+      "metrics": {
+        "flows": 595,
+        "true_attacks": 297,
+        "true_benign": 298,
+        "true_positive": 129,
+        "true_negative": 255,
+        "false_positive": 42,
+        "false_negative_benign": 168,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 1,
+        "correct_over_all": 0.6453781512605042,
+        "resolved_accuracy": 0.6464646464646465,
+        "coverage": 0.9983193277310924,
+        "attack_precision": 0.7543859649122807,
+        "attack_recall": 0.43434343434343436,
+        "attack_f1": 0.5512820512820513,
+        "false_positive_rate": 0.14093959731543623
+      },
+      "by_family": {
+        "BENIGN": {
+          "flows": 298,
+          "correct_over_all": 0.8557046979865772,
+          "attack_recall": 0.0,
+          "coverage": 0.9966442953020134
+        },
+        "Botnet": {
+          "flows": 40,
+          "correct_over_all": 0.35,
+          "attack_recall": 0.35,
+          "coverage": 1.0
+        },
+        "DoS Hulk": {
+          "flows": 40,
+          "correct_over_all": 0.2,
+          "attack_recall": 0.2,
+          "coverage": 1.0
+        },
+        "Port Scanning": {
+          "flows": 31,
+          "correct_over_all": 0.7741935483870968,
+          "attack_recall": 0.7741935483870968,
+          "coverage": 1.0
+        },
+        "DoS GoldenEye": {
+          "flows": 40,
+          "correct_over_all": 0.425,
+          "attack_recall": 0.425,
+          "coverage": 1.0
+        },
+        "DoS Slow": {
+          "flows": 16,
+          "correct_over_all": 0.375,
+          "attack_recall": 0.375,
+          "coverage": 1.0
+        },
+        "Web Attack": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "DDoS": {
+          "flows": 87,
+          "correct_over_all": 0.47126436781609193,
+          "attack_recall": 0.47126436781609193,
+          "coverage": 1.0
+        },
+        "Brute Force": {
+          "flows": 41,
+          "correct_over_all": 0.4146341463414634,
+          "attack_recall": 0.4146341463414634,
+          "coverage": 1.0
+        },
+        "Infiltration": {
+          "flows": 1,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        }
+      }
+    },
+    "sera_ids/ton_iot/2000/binary": {
+      "method": "sera_ids",
+      "dataset": "ton_iot",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1115,
+      "validation_flows": 287,
+      "requested_flows": 598,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 598,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.5298772265985381,
+        "macro_recall": 0.5714855320118478,
+        "macro_f1": 0.4864157536763327,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {
+        "incomplete_response": 1
+      },
+      "api_requests": {
+        "baseline_llm": 2344
+      },
+      "tokens": {
+        "input": 4261720,
+        "output": 229735
+      },
+      "cache_hits": 0,
+      "construction_seconds": 6383.122716290993,
+      "construction_api_requests": {
+        "baseline_llm": 1746
+      },
+      "elapsed_seconds": 8924.993902157992,
+      "method_statistics": {
+        "construction": {
+          "processed": 1115,
+          "errors": 1,
+          "misclassified": 631,
+          "rules_admitted": 564,
+          "rules_queued": 67
+        },
+        "active_rules": 564,
+        "library_frozen": true
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261101T022047.987787Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "a05c856293b7ec4b11d57dace461c371199fdf7a4d683ad77e0be1eff2baafa6",
+      "dataset_path": "data/TON-IOT.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "candidate_pool": 20,
+        "retrieval_k": 5,
+        "signal_threshold": 0.5,
+        "admission_threshold": 0.8,
+        "confidence_backend": "training_proxy"
+      },
+      "configuration_sha256": "15439b72dff3c3a55c867bf7bcdd0b8f63f8d9e65a2626f0cd292bec2838d40d",
+      "source_sha256": "c2ebf25ec8f0d3eb5a53f79ae7497ee5f1f77361e8f1567141081579b9174704",
+      "mean_latency_ms": 4250.0805387741275,
+      "max_latency_ms": 17655.240941996453,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.0670028468989103,
+      "updated_at": "2026-11-01T04:49:33.034491+00:00",
+      "metrics": {
+        "flows": 598,
+        "true_attacks": 532,
+        "true_benign": 66,
+        "true_positive": 334,
+        "true_negative": 34,
+        "false_positive": 32,
+        "false_negative_benign": 197,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 1,
+        "error_benign": 0,
+        "correct_over_all": 0.6153846153846154,
+        "resolved_accuracy": 0.6164154103852596,
+        "coverage": 0.9983277591973244,
+        "attack_precision": 0.912568306010929,
+        "attack_recall": 0.6278195488721805,
+        "attack_f1": 0.7438752783964365,
+        "false_positive_rate": 0.48484848484848486
+      },
+      "by_family": {
+        "scanning": {
+          "flows": 68,
+          "correct_over_all": 0.5,
+          "attack_recall": 0.5,
+          "coverage": 0.9852941176470589
+        },
+        "dos": {
+          "flows": 65,
+          "correct_over_all": 0.6153846153846154,
+          "attack_recall": 0.6153846153846154,
+          "coverage": 1.0
+        },
+        "backdoor": {
+          "flows": 66,
+          "correct_over_all": 0.9393939393939394,
+          "attack_recall": 0.9393939393939394,
+          "coverage": 1.0
+        },
+        "ddos": {
+          "flows": 65,
+          "correct_over_all": 0.2,
+          "attack_recall": 0.2,
+          "coverage": 1.0
+        },
+        "password": {
+          "flows": 67,
+          "correct_over_all": 0.6567164179104478,
+          "attack_recall": 0.6567164179104478,
+          "coverage": 1.0
+        },
+        "injection": {
+          "flows": 67,
+          "correct_over_all": 0.6865671641791045,
+          "attack_recall": 0.6865671641791045,
+          "coverage": 1.0
+        },
+        "normal": {
+          "flows": 66,
+          "correct_over_all": 0.5151515151515151,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "ransomware": {
+          "flows": 65,
+          "correct_over_all": 1.0,
+          "attack_recall": 1.0,
+          "coverage": 1.0
+        },
+        "xss": {
+          "flows": 66,
+          "correct_over_all": 0.42424242424242425,
+          "attack_recall": 0.42424242424242425,
+          "coverage": 1.0
+        },
+        "mitm": {
+          "flows": 3,
+          "correct_over_all": 0.6666666666666666,
+          "attack_recall": 0.6666666666666666,
+          "coverage": 1.0
+        }
+      }
+    },
+    "sera_ids/unsw_nb15/2000/binary": {
+      "method": "sera_ids",
+      "dataset": "unsw_nb15",
+      "implementation": "paper_adaptation",
+      "dataset_size": 2000,
+      "task": "binary",
+      "construction_flows": 1063,
+      "validation_flows": 272,
+      "requested_flows": 665,
+      "classes": [
+        "ATTACK",
+        "BENIGN"
+      ],
+      "model": "zeta-ids:qwen3-8b",
+      "embedding": "sentence-transformers/all-MiniLM-L6-v2",
+      "stream_order": "repository_row_order_not_certified_temporal",
+      "processed": 665,
+      "completed": true,
+      "phase": "complete",
+      "classification_metrics": {
+        "labels": [
+          "ATTACK",
+          "BENIGN"
+        ],
+        "macro_precision": 0.5840238606299606,
+        "macro_recall": 0.5307628342197124,
+        "macro_f1": 0.41958182393969123,
+        "definition": "Macro over observed true/predicted traffic classes; errors and abstentions are not target classes."
+      },
+      "errors": {},
+      "api_requests": {
+        "baseline_llm": 2231
+      },
+      "tokens": {
+        "input": 10321391,
+        "output": 153993
+      },
+      "cache_hits": 0,
+      "construction_seconds": 6383.3858962819795,
+      "construction_api_requests": {
+        "baseline_llm": 1566
+      },
+      "elapsed_seconds": 9224.270881248987,
+      "method_statistics": {
+        "construction": {
+          "processed": 1063,
+          "errors": 0,
+          "misclassified": 503,
+          "rules_admitted": 407,
+          "rules_queued": 96
+        },
+        "active_rules": 407,
+        "construction_error_types": {},
+        "last_construction_error": null,
+        "library_frozen": true
+      },
+      "results_file": "/home/zealot/ollama/ZETA-IDS/results/summary.json",
+      "run_id": "20261101T080331.030164Z",
+      "failure": null,
+      "seed": 17,
+      "dataset_sha256": "781c8009e89957a8b9b7be8d516918489382fd4c85977d88bf12ff2555740fe9",
+      "dataset_path": "data/UNSW_NB15.pkl",
+      "package_versions": {
+        "python": "3.12.3",
+        "numpy": "2.5.4",
+        "pandas": "3.1.0",
+        "scikit-learn": "1.9.1",
+        "scipy": "1.18.1",
+        "torch": "2.11.0+cu128",
+        "sentence-transformers": "6.2.0",
+        "transformers": "5.21.1",
+        "PyYAML": "6.0.3"
+      },
+      "parameters": {
+        "candidate_pool": 20,
+        "retrieval_k": 5,
+        "signal_threshold": 0.5,
+        "admission_threshold": 0.8,
+        "confidence_backend": "training_proxy"
+      },
+      "configuration_sha256": "d5d113ad7253ea99d23d36d5abac0c8972b3dfa06d5fc3cd7636ec188bb0bb09",
+      "source_sha256": "13060aeacfaacd55a6aac0513e856ed3c4d51d9f742e8a036322c425109a3baf",
+      "mean_latency_ms": 4271.380639337248,
+      "max_latency_ms": 6066.910443012603,
+      "latency_scope": "flow_inference",
+      "flows_per_second": 0.07209241885467672,
+      "updated_at": "2026-11-01T10:37:15.290992+00:00",
+      "metrics": {
+        "flows": 665,
+        "true_attacks": 366,
+        "true_benign": 299,
+        "true_positive": 47,
+        "true_negative": 279,
+        "false_positive": 20,
+        "false_negative_benign": 319,
+        "uncertain_attacks": 0,
+        "uncertain_benign": 0,
+        "error_attacks": 0,
+        "error_benign": 0,
+        "correct_over_all": 0.49022556390977445,
+        "resolved_accuracy": 0.49022556390977445,
+        "coverage": 1.0,
+        "attack_precision": 0.7014925373134329,
+        "attack_recall": 0.1284153005464481,
+        "attack_f1": 0.21709006928406466,
+        "false_positive_rate": 0.06688963210702341
+      },
+      "by_family": {
+        "Exploits": {
+          "flows": 90,
+          "correct_over_all": 0.18888888888888888,
+          "attack_recall": 0.18888888888888888,
+          "coverage": 1.0
+        },
+        "DoS": {
+          "flows": 33,
+          "correct_over_all": 0.06060606060606061,
+          "attack_recall": 0.06060606060606061,
+          "coverage": 1.0
+        },
+        "Fuzzers": {
+          "flows": 49,
+          "correct_over_all": 0.10204081632653061,
+          "attack_recall": 0.10204081632653061,
+          "coverage": 1.0
+        },
+        "Reconnaissance": {
+          "flows": 28,
+          "correct_over_all": 0.03571428571428571,
+          "attack_recall": 0.03571428571428571,
+          "coverage": 1.0
+        },
+        "Shellcode": {
+          "flows": 3,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Generic": {
+          "flows": 152,
+          "correct_over_all": 0.14473684210526316,
+          "attack_recall": 0.14473684210526316,
+          "coverage": 1.0
+        },
+        "Normal": {
+          "flows": 299,
+          "correct_over_all": 0.9331103678929766,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Backdoor": {
+          "flows": 5,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Analysis": {
+          "flows": 5,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        },
+        "Worms": {
+          "flows": 1,
+          "correct_over_all": 0.0,
+          "attack_recall": 0.0,
+          "coverage": 1.0
+        }
+      }
+    }
+  }
+}

@@ -17,15 +17,16 @@ import time
 import numpy as np
 import pandas as pd
 import yaml
-from sklearn.metrics import precision_recall_fscore_support
 
 from ..controller import load_config
-from ..data import load_dataset
+from ..data import dataset_specs, load_dataset
 from ..evidence import digest
 from ..llm import Ollama
-from ..reporting import GroundTruthReport
-from .common import (Features, LocalReasoner, TextEmbedding, binary_label,
+from ..reporting import ClassificationReport, GroundTruthReport
+from ..results import atomic_json, optional_log, print_result, update_results
+from .common import (Features, LocalReasoner, ReplayInputs, TextEmbedding, binary_label,
                      raw_records, select_source)
+from .recovery import copy_journal, journal
 
 METHODS = ('rlfe_ids', 'scala_nids', 'ma_ids', 'sera_ids')
 DATASETS = ('kdd', 'cicids2018', 'ton_iot', 'unsw_nb15')
@@ -78,7 +79,8 @@ def run_one(args, method, dataset):
         for key in ('domain_epochs', 'reconstruction_epochs', 'joint_epochs'):
             options['scala_nids'][key] = args.epochs
     validate(options, method)
-    spec = yaml.safe_load((root / cfg['general']['datasets_config']).read_text())['datasets'][dataset]
+    spec = dataset_specs(cfg, root)[dataset]
+    started = time.perf_counter()
     data = load_dataset(dataset, spec, cfg, root)
     train, validation = select_source(data, options['general']['construction_limit'],
                                       cfg['general']['seed'], options['general']['validation_fraction'])
@@ -98,26 +100,28 @@ def run_one(args, method, dataset):
             cfg['baseline_llm'][key] = os.environ[env]
     if method == 'scala_nids':
         cfg['baseline_llm']['request_retries'] = 0  # Paper uses immediate fallback.
+        cfg['baseline_llm']['response_retries'] = 0
     preview = {'method': method, 'dataset': dataset, 'implementation': 'paper_adaptation',
+               'dataset_size': len(data['x']),
                'task': task, 'construction_flows': len(train), 'validation_flows': len(validation),
                'requested_flows': len(replay), 'classes': sorted(set(labels)),
                'model': cfg['baseline_llm']['model'],
                'embedding': options['embedding']['model'] if method in ('ma_ids', 'sera_ids') else None,
                'stream_order': 'repository_row_order_not_certified_temporal'}
-    if args.dry_run:
+    # A preview needs only cohort selection; avoid fitting preprocessors,
+    # importing torch, or hashing all sources until execution is requested.
+    if args.dry_run and not args.resume_from:
         print(json.dumps({'mode': 'preview', **preview, 'api_requests': 0}))
         return
     if method in ('rlfe_ids', 'scala_nids'):
         try:
             import torch
         except ImportError as exc:
-            raise RuntimeError('Install requirements-baselines.txt (CPU PyTorch recommended)') from exc
+            raise RuntimeError('Install requirements.txt and a CUDA-enabled PyTorch build for GPU training') from exc
         torch.set_num_threads(int(os.environ.get('ZETA_NATIVE_THREADS', '1')))
-    output_root = args.output_dir or root / 'results/baselines'
+    output_root = args.output_dir or root / cfg['output']['directory']
     run_id = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
-    directory = output_root / method / dataset / run_id
-    directory.mkdir(parents=True, exist_ok=False)
-    started = time.perf_counter()
+    directory = output_root / 'details' / method / dataset / run_id if args.save_details else None
     client, report = Ollama(cfg), GroundTruthReport()
     reasoner = LocalReasoner(client, cfg, sorted(set(labels)))
     features = Features().fit(data['x'].iloc[train], data['numeric'], data['categorical'])
@@ -133,16 +137,87 @@ def run_one(args, method, dataset):
                 'adaptations': {'llm_backend': 'local_ollama', 'data': 'repository_schemas',
                                 'confidence_backend': options['sera_ids']['confidence_backend']
                                 if method == 'sera_ids' else None}}
-    (directory / 'manifest.json').write_text(json.dumps(manifest, indent=2))
-    np.savez_compressed(directory / 'cohorts.npz', construction=train, validation=validation, replay=replay)
-    with (directory / 'preprocessor.pkl').open('wb') as stream:
-        pickle.dump(features, stream)
+    if args.resume_from:
+        source = args.resume_from.resolve()
+        previous = json.loads((source / 'manifest.json').read_text())
+        for key in ('method', 'dataset', 'task', 'configuration', 'llm_configuration',
+                    'dataset_sha256', 'dataset_specification', 'seed', 'classes'):
+            if previous.get(key) != manifest.get(key):
+                raise ValueError(f'Resume rejected: {key} differs from the original run')
+        with np.load(source / 'cohorts.npz') as cohorts:
+            for key, selected in [('construction', train), ('validation', validation), ('replay', replay)]:
+                if not np.array_equal(cohorts[key], selected):
+                    raise ValueError(f'Resume rejected: {key} cohort differs; use the original flow limits')
+        manifest['resumed_from'] = str(source)
+        manifest['previous_source_sha256'] = previous['source_sha256']
+        manifest['accounting_scope'] = 'API requests, tokens and elapsed time cover this invocation only'
+        construction_count = sum(1 for _ in journal(source / 'construction.jsonl'))
+        replay_count = sum(1 for _ in journal(source / 'flows.jsonl'))
+        if construction_count > len(train) or (replay_count and construction_count != len(train)):
+            raise ValueError('Resume rejected: inconsistent construction and replay journals')
+        if replay_count > len(replay):
+            raise ValueError('Resume rejected: replay journal exceeds the requested cohort')
+    if args.dry_run:
+        print(json.dumps({'mode': 'preview', **preview, 'api_requests': 0,
+                          'resume_from': str(args.resume_from) if args.resume_from else None,
+                          'recoverable_construction': construction_count if args.resume_from else 0,
+                          'recoverable_replay': replay_count if args.resume_from else 0}))
+        return
+    if directory:
+        directory.mkdir(parents=True, exist_ok=False)
+        if args.resume_from:
+            for name in ('construction.jsonl', 'flows.jsonl'):
+                copy_journal(source / name, directory / name)
+        atomic_json(directory / 'manifest.json', manifest)
+        np.savez_compressed(directory / 'cohorts.npz', construction=train, validation=validation, replay=replay)
+        with (directory / 'preprocessor.pkl').open('wb') as stream:
+            pickle.dump(features, stream)
     algorithm = None
     phase = 'construction'
     processed, errors = 0, Counter()
-    true_classes, predicted_classes = [], []
+    classification = ClassificationReport()
     construction_seconds = None
+    construction_requests = {}
+    latency_total = latency_max = 0.0
+    failure = None
+
+    def write_summary():
+        class_metrics = classification.summary()
+        summary = {**preview, 'processed': processed, 'completed': phase == 'complete', 'phase': phase,
+                   'ground_truth_metrics': report.summary(), 'classification_metrics': class_metrics,
+                   'errors': dict(errors), 'api_requests': dict(client.requests),
+                   'tokens': dict(client.tokens), 'cache_hits': client.cache_hits,
+                   'construction_seconds': construction_seconds,
+                   'construction_api_requests': construction_requests,
+                   'elapsed_seconds': time.perf_counter() - started,
+                   'method_statistics': algorithm.statistics() if algorithm is not None else {},
+                   'results_file': str(output_root / 'summary.json'), 'run_id': run_id,
+                   'failure': failure,
+                   'seed': manifest['seed'], 'dataset_sha256': manifest['dataset_sha256'],
+                   'dataset_path': spec['path'],
+                   'package_versions': manifest['package_versions'],
+                   'parameters': {key: value for key, value in options[method].items()
+                                  if not isinstance(value, (dict, list))},
+                   'configuration_sha256': digest([options, cfg]),
+                   'source_sha256': digest(manifest['source_sha256']),
+                   'mean_latency_ms': latency_total / processed if processed else None,
+                   'max_latency_ms': latency_max if processed else None,
+                   'latency_scope': 'chunk_prediction_and_adaptation_amortized' if method == 'scala_nids' else 'flow_inference'}
+        elapsed = summary['elapsed_seconds']
+        summary['flows_per_second'] = processed / elapsed if elapsed else None
+        if args.resume_from:
+            summary['resumed_from'] = manifest['resumed_from']
+            summary['accounting_scope'] = manifest['accounting_scope']
+        if directory:
+            atomic_json(directory / 'summary.json', summary)
+        update_results(output_root, summary)
+        return summary
+
+    write_summary()
     try:
+        print(json.dumps({'event': 'baseline_phase', 'method': method, 'dataset': dataset,
+                          'phase': 'construction', 'flows': len(train),
+                          'results_file': str(output_root / 'summary.json')}), file=sys.stderr, flush=True)
         if method in ('ma_ids', 'sera_ids'):
             from .experience import ExperienceIDS
             embedder = TextEmbedding(options['embedding'])
@@ -157,16 +232,46 @@ def run_one(args, method, dataset):
             algorithm = SCALANIDS(reasoner, options[method], values, data['y'][train],
                                   features.transform(data['x'].iloc[validation]), data['y'][validation],
                                   len(data['numeric']), cfg['general']['seed'])
-        algorithm.fit(directory)
+        if method in ('ma_ids', 'sera_ids'):
+            algorithm.fit(directory, progress=write_summary)
+        else:
+            algorithm.fit(directory)
         construction_seconds = time.perf_counter() - started
         construction_requests = dict(client.requests)
+        phase = 'preparing_replay'
+        write_summary()
+        inputs = ReplayInputs(data, replay, features if method in ('rlfe_ids', 'scala_nids') else None)
+        for index, record in enumerate(journal(directory / 'flows.jsonl') if directory else ()):
+            if index >= len(replay):
+                raise ValueError('Replay journal exceeds the requested cohort')
+            position = replay[index]
+            truth, family = int(data['y'][position]), str(data['family'][position])
+            if (record['flow_id'] != digest([dataset, int(data['row_positions'][position])])
+                    or record['decision_source'] != method
+                    or record['ground_truth'] != {'binary': 'ATTACK' if truth else 'BENIGN', 'family': family}):
+                raise ValueError('Replay journal does not match the selected cohort')
+            report.record(record, truth, family)
+            result = record['method_output']
+            true_class = ('BENIGN' if not truth else 'ATTACK') if task == 'binary' else ('BENIGN' if not truth else family)
+            classification.record(true_class, result['label'])
+            if result.get('error'):
+                errors[result['error']] += 1
+            processed += 1
+            latency_total += record['latency_ms']
+            latency_max = max(latency_max, record['latency_ms'])
         phase = 'replay'
+        write_summary()
+        print(json.dumps({'event': 'baseline_phase', 'method': method, 'dataset': dataset,
+                          'phase': phase, 'flows': len(replay)}), file=sys.stderr, flush=True)
         chunk_size = options['scala_nids']['chunk_size'] if method == 'scala_nids' else 1
-        with (directory / 'flows.jsonl').open('x') as stream:
-            for start in range(0, len(replay), chunk_size):
+        replay_started = last_progress = time.monotonic()
+        restored_replay = processed
+        consecutive_errors = 0
+        with optional_log(directory / 'flows.jsonl' if directory else None) as stream:
+            for start in range(processed, len(replay), chunk_size):
                 positions = replay[start:start + chunk_size]
-                flows = raw_records(data, positions)
-                encoded = features.transform(data['x'].iloc[positions])
+                flows = inputs.records(start, start + len(positions)) if method != 'scala_nids' else None
+                encoded = inputs.encoded[start:start + len(positions)] if inputs.encoded is not None else None
                 before_requests = sum(client.requests.values())
                 tick = time.perf_counter()
                 if method == 'scala_nids':
@@ -194,39 +299,47 @@ def run_one(args, method, dataset):
                     family = str(data['family'][position])
                     report.record(record, truth, family)
                     true_class = ('BENIGN' if not truth else 'ATTACK') if task == 'binary' else ('BENIGN' if not truth else family)
-                    true_classes.append(true_class); predicted_classes.append(result['label'])
+                    classification.record(true_class, result['label'])
                     record['ground_truth'] = {'binary': 'ATTACK' if truth else 'BENIGN', 'family': family}
                     if result.get('error'):
                         errors[result['error']] += 1
-                    stream.write(json.dumps(record, allow_nan=False) + '\n')
-                    stream.flush()
+                    if stream:
+                        stream.write(json.dumps(record, allow_nan=False) + '\n')
+                        stream.flush()
+                    latency_total += record['latency_ms']
+                    latency_max = max(latency_max, record['latency_ms'])
                     processed += 1
-                if processed % 100 == 0 or processed == len(replay):
+                    consecutive_errors = consecutive_errors + 1 if result.get('error') else 0
+                    if method in ('ma_ids', 'sera_ids') and consecutive_errors >= 3:
+                        raise RuntimeError('Three consecutive replay calls failed; '
+                                           'Check Ollama; --save-details enables recoverable journals.')
+                now = time.monotonic()
+                if processed % 100 == 0 or processed == len(replay) or now - last_progress >= 30:
+                    write_summary()
                     print(json.dumps({'event': 'baseline_progress', 'method': method, 'dataset': dataset,
-                                      'processed': processed, 'requested': len(replay)}), file=sys.stderr, flush=True)
+                                      'processed': processed, 'requested': len(replay),
+                                      'eta_seconds': round((now - replay_started) / (processed - restored_replay)
+                                                           * (len(replay) - processed))}), file=sys.stderr, flush=True)
+                    last_progress = now
         phase = 'complete'
+    except BaseException as exc:
+        failure = f'{type(exc).__name__}: {exc}'
+        raise
     finally:
-        if algorithm is not None:
-            algorithm.save(directory)
-        class_metrics = None
-        if true_classes:
-            classes = sorted(set(true_classes) | (set(predicted_classes) - {'ERROR', 'UNCERTAIN'}))
-            precision, recall, f1, _ = precision_recall_fscore_support(
-                true_classes, predicted_classes, labels=classes, average='macro', zero_division=0)
-            class_metrics = {'labels': classes, 'macro_precision': float(precision),
-                             'macro_recall': float(recall), 'macro_f1': float(f1),
-                             'definition': 'Macro over observed true/predicted traffic classes; ERROR is not a target class.'}
-        summary = {**preview, 'processed': processed, 'completed': phase == 'complete', 'phase': phase,
-                   'ground_truth_metrics': report.summary(), 'classification_metrics': class_metrics,
-                   'errors': dict(errors), 'api_requests': dict(client.requests),
-                   'tokens': dict(client.tokens), 'cache_hits': client.cache_hits,
-                   'construction_seconds': construction_seconds,
-                   'construction_api_requests': locals().get('construction_requests', {}),
-                   'elapsed_seconds': time.perf_counter() - started,
-                   'method_statistics': algorithm.statistics() if algorithm is not None else {},
-                   'results_directory': str(directory)}
-        (directory / 'summary.json').write_text(json.dumps(summary, indent=2, allow_nan=False))
-    print(json.dumps(summary, allow_nan=False))
+        # Keep a final incomplete summary even if saving the model itself fails.
+        try:
+            if phase == 'complete':
+                phase = 'saving'
+            if algorithm is not None:
+                algorithm.save(directory)
+            if phase == 'saving':
+                phase = 'complete'
+        except BaseException as exc:
+            failure = f'{type(exc).__name__}: {exc}'
+            raise
+        finally:
+            summary = write_summary()
+    print_result(summary)
 
 
 def main():
@@ -238,19 +351,25 @@ def main():
     parser.add_argument('--task', choices=['binary', 'family'])
     parser.add_argument('--construction-flows', type=int)
     limits = parser.add_mutually_exclusive_group()
-    limits.add_argument('--max-flows', type=int)
-    limits.add_argument('--all-flows', action='store_true')
+    limits.add_argument('--max-flows', type=int, help='Optionally limit evaluation flows')
+    limits.add_argument('--all-flows', action='store_true', help='Use every evaluation flow (default)')
     parser.add_argument('--epochs', type=int, help='Override neural training epochs')
     parser.add_argument('--output-dir', type=Path)
+    parser.add_argument('--save-details', action='store_true',
+                        help='Save journals and model artifacts for debugging and recovery')
+    parser.add_argument('--resume-from', type=Path,
+                        help='Recover MA-IDS/SERA-IDS journals into a new run, preserving the source')
     parser.add_argument('--dry-run', action='store_true', help='Preview cohorts without models, writes or API calls')
     args = parser.parse_args()
+    if args.resume_from and (args.method not in ('ma_ids', 'sera_ids') or args.dataset == 'all'):
+        parser.error('--resume-from requires one ma_ids/sera_ids method and one dataset')
+    if args.resume_from:
+        args.save_details = True
     if args.task == 'family' and args.method in ('all', 'scala_nids'):
         parser.error('SCALA-NIDS is binary only; run family-capable methods individually')
     for key in ('construction_flows', 'max_flows', 'epochs'):
         if getattr(args, key) is not None and getattr(args, key) <= 0:
             parser.error(f'--{key.replace("_", "-")} must be positive')
-    if args.max_flows is None and not args.all_flows:
-        args.max_flows = 50
     for method in METHODS if args.method == 'all' else [args.method]:
         for dataset in DATASETS if args.dataset == 'all' else [args.dataset]:
             run_one(args, method, dataset)

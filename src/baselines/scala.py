@@ -10,6 +10,8 @@ from torch import nn
 from scipy.stats import chisquare
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 
 class Reverse(torch.autograd.Function):
@@ -144,7 +146,6 @@ class SCALANIDS:
         # Fixed source retention buffer; calibration/validation never enters this buffer.
         selected = self.rng.permutation(len(self.source))[:self.options['buffer_size']]
         self.source, self.labels = self.source[selected], self.labels[selected]
-        self.save(directory)
 
     @staticmethod
     def measure(model, values):
@@ -176,7 +177,8 @@ class SCALANIDS:
             y = np.repeat([0, 1], n)
             train_x, test_x, train_y, test_y = train_test_split(x, y, test_size=.4,
                                                                              stratify=y, random_state=17)
-            probe = LogisticRegression(max_iter=300).fit(train_x, train_y)
+            probe = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000))
+            probe.fit(train_x, train_y)
             domain_accuracy = float(probe.score(test_x, test_y))
         counts = np.bincount(measured['probabilities'].argmax(1), minlength=2)
         pvalue = float(chisquare(counts, self.reference_distribution * len(values)).pvalue)
@@ -305,6 +307,8 @@ class SCALANIDS:
         return predictions
 
     def save(self, directory):
+        if directory is None:
+            return
         torch.save(self.model.state_dict(), directory / 'detector.pt')
         (directory / 'adaptation.json').write_text(json.dumps(self.events, indent=2, allow_nan=False))
         if hasattr(self, 'reconstruction_threshold'):

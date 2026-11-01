@@ -12,16 +12,20 @@ Usage: run_pipeline.sh [--method METHOD] --dataset DATASET [options]
 Methods:  aegis (default), rlfe_ids, scala_nids, ma_ids, sera_ids
 Datasets: kdd, cicids2018, ton_iot, unsw_nb15, all
 
-Common options: --all-flows | --max-flows N, --dry-run, --output-dir PATH
+Inputs: the configured files directly under data/ (currently 2,000 rows each)
+All available evaluation flows run by default; --max-flows N limits them.
+Common options: --all-flows, --max-flows N, --dry-run, --output-dir PATH
+Output: results/summary.json; --save-details also retains flow logs and model files
 Baseline options: --construction-flows N, --epochs N, --task binary|family
+Recovery: --resume-from RUN_DIRECTORY (one MA-IDS/SERA-IDS dataset only)
 Single-method option: --config PATH
 
 Run each architecture separately:
-  run_pipeline.sh --method aegis --dataset all --all-flows
-  run_pipeline.sh --method rlfe_ids --dataset all --all-flows
-  run_pipeline.sh --method scala_nids --dataset all --all-flows
-  run_pipeline.sh --method ma_ids --dataset all --all-flows
-  run_pipeline.sh --method sera_ids --dataset all --all-flows
+  run_pipeline.sh --method aegis --dataset all
+  run_pipeline.sh --method rlfe_ids --dataset all
+  run_pipeline.sh --method scala_nids --dataset all
+  run_pipeline.sh --method ma_ids --dataset all
+  run_pipeline.sh --method sera_ids --dataset all
 
 Datasets run sequentially and stop on the first failure. Options pass to Python.
 Optional method groups: 'baselines' runs four baselines; 'all' includes AEGIS.
@@ -46,7 +50,7 @@ while (($#)); do
         --method=*) method="${1#*=}"; shift ;;
         --dataset=*) dataset="${1#*=}"; shift ;;
         --help|-h) usage; exit 0 ;;
-        --construction-flows|--epochs|--task)
+        --construction-flows|--epochs|--task|--resume-from)
             if (($# < 2)) || [[ "$2" == --* ]]; then
                 echo "Missing value for $1" >&2
                 exit 2
@@ -55,7 +59,7 @@ while (($#)); do
             options+=("$1" "$2")
             shift 2
             ;;
-        --construction-flows=*|--epochs=*|--task=*)
+        --construction-flows=*|--epochs=*|--task=*|--resume-from=*)
             baseline_only=true; options+=("$1"); shift ;;
         --config|--config=*) custom_config=true; options+=("$1"); shift ;;
         *) options+=("$1"); shift ;;
@@ -102,7 +106,17 @@ for selected_method in "${methods[@]}"; do
         else
             module=(src.baselines --method "$selected_method")
         fi
-        taskset --cpu-list "${ZETA_CPU_AFFINITY:-0-5,8-31}" \
-            .venv/bin/python -m "${module[@]}" --dataset "$selected_dataset" "${options[@]}"
+        if taskset --cpu-list "${ZETA_CPU_AFFINITY:-0-5,8-31}" \
+            .venv/bin/python -m "${module[@]}" --dataset "$selected_dataset" "${options[@]}"; then
+            printf 'Finished method: %s | dataset: %s\n' "$selected_method" "$selected_dataset"
+        else
+            status=$?
+            printf 'Failed method: %s | dataset: %s | exit code: %s\n' \
+                "$selected_method" "$selected_dataset" "$status" >&2
+            if [[ "$status" -eq 139 ]]; then
+                echo 'Native process crash: the partial run is incomplete. Later datasets were not started.' >&2
+            fi
+            exit "$status"
+        fi
     done
 done

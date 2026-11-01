@@ -5,11 +5,14 @@ general:
   task: binary
 llm:
   max_tokens: 512
+  response_retries: 1
+  max_retry_tokens: 1024
 embedding:
   model: sentence-transformers/all-MiniLM-L6-v2
   cache_folder: results/models/sentence_transformers
   batch_size: 64
 rlfe_ids:
+  device: cuda
   epochs: 150
   batch_size: 32
   learning_rate: 0.001

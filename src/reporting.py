@@ -1,5 +1,28 @@
 """Post-decision ground-truth accounting; never feeds routing or learning."""
 from collections import Counter, defaultdict
+from contextlib import contextmanager
+import json
+import sys
+from threading import Event, Thread
+
+
+@contextmanager
+def progress_heartbeat(snapshot, interval=15):
+    """Keep status visible during slow provider calls without touching model state."""
+    stopped = Event()
+
+    def report():
+        while not stopped.wait(interval):
+            print(json.dumps(snapshot()), file=sys.stderr, flush=True)
+
+    print(json.dumps(snapshot()), file=sys.stderr, flush=True)
+    thread = Thread(target=report, name='run-progress', daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        stopped.set()
+        thread.join()
 
 
 def metrics(counts: Counter) -> dict:
@@ -50,3 +73,33 @@ class GroundTruthReport:
                 "definition": "Ratios in [0,1]. Uncertain/error outputs are not correct; "
                               "attack recall includes all true attacks. Family metrics measure "
                               "binary detection within each true family, not family attribution."}
+
+
+class ClassificationReport:
+    """Macro class metrics using bounded counters instead of per-flow lists."""
+    def __init__(self):
+        self.actual = Counter()
+        self.predicted = Counter()
+        self.correct = Counter()
+
+    def record(self, actual, predicted):
+        self.actual[actual] += 1
+        self.predicted[predicted] += 1
+        if actual == predicted:
+            self.correct[actual] += 1
+
+    def summary(self):
+        if not self.actual:
+            return None
+        labels = sorted(set(self.actual) | (set(self.predicted) - {'ERROR', 'UNCERTAIN'}))
+        precision, recall, f1 = [], [], []
+        for label in labels:
+            true = self.correct[label]
+            p = true / self.predicted[label] if self.predicted[label] else 0.0
+            r = true / self.actual[label] if self.actual[label] else 0.0
+            precision.append(p)
+            recall.append(r)
+            f1.append(2 * p * r / (p + r) if p + r else 0.0)
+        return {'labels': labels, 'macro_precision': sum(precision) / len(labels),
+                'macro_recall': sum(recall) / len(labels), 'macro_f1': sum(f1) / len(labels),
+                'definition': 'Macro over observed true/predicted traffic classes; errors and abstentions are not target classes.'}

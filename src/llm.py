@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections import Counter, OrderedDict
 import json
+import sys
 import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -27,6 +28,7 @@ class Ollama:
         self.tokens = Counter()
         self.cache = OrderedDict()
         self.cache_hits = 0
+        self.active_request = None
 
     def call(self, stage: str, body: dict, *, use_cache: bool = True) -> dict:
         options = self.cfg[stage]
@@ -41,6 +43,9 @@ class Ollama:
             request = Request(options["base_url"].rstrip("/") + options["endpoint"],
                               data=json.dumps(body, allow_nan=False).encode(),
                               headers={"Content-Type": "application/json"}, method="POST")
+            self.active_request = {"stage": stage, "attempt": attempt + 1,
+                                   "started": time.perf_counter(),
+                                   "timeout_seconds": options['timeout_seconds']}
             try:
                 with urlopen(request, timeout=options["timeout_seconds"]) as response:
                     result = json.load(response)
@@ -66,7 +71,13 @@ class Ollama:
                 error, retryable = "connection_or_timeout", True
             except (ValueError, UnicodeError, TypeError):
                 return {"body": None, "error": "malformed_response"}
-            if not retryable or attempt == retries:
+            finally:
+                self.active_request = None
+            retrying = retryable and attempt < retries
+            print(json.dumps({"event": "llm_request_failed", "stage": stage,
+                              "attempt": attempt + 1, "error": error,
+                              "retrying": retrying}), file=sys.stderr, flush=True)
+            if not retrying:
                 return {"body": None, "error": error}
             time.sleep(options["retry_backoff_seconds"] * 2 ** attempt)
 

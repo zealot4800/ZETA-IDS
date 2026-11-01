@@ -22,10 +22,15 @@ class ControllerSupport:
         train = rows.drop_duplicates("hash")["position"].to_numpy()
         frame = data["x"].iloc[train]
         numbers = frame[self.numeric].to_numpy(dtype=float)
-        with np.errstate(invalid="ignore"):
-            self.median = np.nanmedian(numbers, axis=0)
-            spread = np.nanquantile(numbers, .75, axis=0) - np.nanquantile(numbers, .25, axis=0)
-        self.median = np.nan_to_num(self.median)
+        # Empty training columns have no estimable location/spread. Preserve
+        # their existing neutral encoding without reducing an all-NaN slice.
+        observed = np.isfinite(numbers).any(axis=0)
+        self.median = np.zeros(numbers.shape[1])
+        spread = np.zeros(numbers.shape[1])
+        if observed.any():
+            self.median[observed] = np.nanmedian(numbers[:, observed], axis=0)
+            quartiles = np.nanquantile(numbers[:, observed], [.25, .75], axis=0)
+            spread[observed] = quartiles[1] - quartiles[0]
         self.scale = np.where(np.isfinite(spread) & (spread > 0), spread, 1.0)
         self.all_numbers, self.all_categories = self._encode(data["x"])
         leaves = dataplane.leaves[train]

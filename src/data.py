@@ -5,10 +5,19 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import yaml
+
+
+def dataset_specs(cfg, root):
+    """Load the single configuration for the available files in data/."""
+    return yaml.safe_load((root / cfg['general']['datasets_config']).read_text())['datasets']
 
 
 def load_dataset(name: str, spec: dict, cfg: dict, root: Path) -> dict:
-    frame = pd.read_pickle(root / spec["path"])
+    path = root / spec["path"]
+    if not path.exists():
+        raise FileNotFoundError(f'Dataset missing: {path}. Check its path in the datasets configuration.')
+    frame = pd.read_pickle(path)
     positions = np.arange(len(frame))
     if selection := spec.get("row_selection"):
         selected = frame[selection["column"]] == selection["include"]
@@ -43,6 +52,9 @@ def load_dataset(name: str, spec: dict, cfg: dict, root: Path) -> dict:
     stream = ~train
     if official := spec.get("official_split"):
         boundary = official["reset_index"]
+        if not 0 < boundary < len(x):
+            raise ValueError(f'{name}: official split boundary {boundary} must be inside '
+                             f'the current {len(x)}-row dataset')
         train = np.arange(len(x)) < boundary
         stream = ~train
         train &= ~np.isin(groups, groups[stream])
