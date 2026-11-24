@@ -8,5 +8,5 @@ results/
 config/*.ollama
 paper/*
 oldPapers/*
-p4/*
 .vscode/*
+.json
