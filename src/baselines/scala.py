@@ -14,6 +14,15 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 
+UNKNOWN_DRIFT_RATIO = .20
+
+
+def optimizer_step(optimizer, loss):
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+
 class Reverse(torch.autograd.Function):
     @staticmethod
     def forward(ctx, values):
@@ -46,7 +55,7 @@ def fallback_strategy(snapshot):
         return 'mixed'
     if signals['domain'] or signals['distribution']:
         return 'covariate'
-    if snapshot['unknown_ratio'] > .20:
+    if snapshot['unknown_ratio'] > UNKNOWN_DRIFT_RATIO:
         return 'label'
     if signals['confidence']:
         return 'concept'
@@ -58,7 +67,7 @@ def validate_advice(advice, snapshot):
     supported = {
         'covariate': signals['domain'] or signals['distribution'],
         'concept': signals['confidence'],
-        'label': snapshot['unknown_ratio'] > .20,
+        'label': snapshot['unknown_ratio'] > UNKNOWN_DRIFT_RATIO,
         'mixed': sum(bool(value) for value in signals.values()) >= 2}
     evidence = any(supported.values())
     drift = advice['drift_type']
@@ -91,7 +100,7 @@ class SCALANIDS:
         for start in range(0, count, self.options['batch_size']):
             yield order[start:start + self.options['batch_size']]
 
-    def fit(self, directory):
+    def fit(self):
         if not (self.labels == 0).any() or not (self.labels == 1).any():
             raise ValueError('SCALA training requires both benign and attack examples')
         # Stage 1: frozen encoder, domain-head warm-up on perturbed source features.
@@ -102,8 +111,7 @@ class SCALANIDS:
                 with torch.no_grad():
                     latent = self.model.encoder(torch.cat([x, x + .1 * torch.randn_like(x)]))
                 target = torch.cat([torch.zeros(len(x)), torch.ones(len(x))]).long()
-                loss = nn.functional.cross_entropy(self.model.domain(latent), target)
-                optimizer.zero_grad(); loss.backward(); optimizer.step()
+                optimizer_step(optimizer, nn.functional.cross_entropy(self.model.domain(latent), target))
         # Stage 2: benign-only weighted reconstruction.
         optimizer = torch.optim.Adam(list(self.model.encoder.parameters()) +
                                      list(self.model.decoder.parameters()), lr=self.options['learning_rate'])
@@ -112,8 +120,7 @@ class SCALANIDS:
             for indices in self.batches(len(benign)):
                 x = benign[indices]
                 reconstruction = self.model(x)[2]
-                loss = (((reconstruction - x) ** 2) * self.weights).mean()
-                optimizer.zero_grad(); loss.backward(); optimizer.step()
+                optimizer_step(optimizer, (((reconstruction - x) ** 2) * self.weights).mean())
         # Stage 3: weighted joint objective, detached classifier training, EMA center.
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.options['learning_rate'])
         center = None
@@ -134,8 +141,8 @@ class SCALANIDS:
                 domain = self.model.domain(Reverse.apply(torch.cat([z, shifted])))
                 domain_target = torch.cat([torch.zeros(len(x)), torch.ones(len(x))]).long()
                 domain_loss = nn.functional.cross_entropy(domain, domain_target)
-                loss = recon + .4 * compact + .3 * ce + .1 * min(1., (epoch + 1) / 10) * domain_loss
-                optimizer.zero_grad(); loss.backward(); optimizer.step()
+                optimizer_step(optimizer, recon + .4 * compact + .3 * ce +
+                               .1 * min(1., (epoch + 1) / 10) * domain_loss)
         self.model.eval()
         with torch.no_grad():
             errors = self.measure(self.model, benign)['reconstruction_error']
@@ -210,7 +217,8 @@ class SCALANIDS:
             return {**result, 'source': 'llm'}
         except (ValueError, KeyError, TypeError, IndexError):
             self.fallbacks += 1
-            return {'adapt': any(snapshot['signals'].values()) or snapshot['unknown_ratio'] > .20, 'strategy': fallback,
+            return {'adapt': any(snapshot['signals'].values()) or snapshot['unknown_ratio'] > UNKNOWN_DRIFT_RATIO,
+                    'strategy': fallback,
                     'drift_type': 'none' if fallback == 'conservative' else fallback,
                     'source': 'fallback'}
 
@@ -256,7 +264,8 @@ class SCALANIDS:
                 s = self.rng.integers(len(source), size=source_batch)
                 t = self.rng.integers(len(target), size=target_batch)
                 loss = self.objective(student, teacher, source[s], labels[s], target[t], template)
-                optimizer.zero_grad(); loss.backward()
+                optimizer.zero_grad()
+                loss.backward()
                 nn.utils.clip_grad_norm_(student.parameters(), self.options['gradient_clip'])
                 optimizer.step()
         student.eval()

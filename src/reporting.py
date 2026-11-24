@@ -6,6 +6,11 @@ import sys
 from threading import Event, Thread
 
 
+def log_event(event: dict) -> None:
+    """Write one structured progress or diagnostic event to stderr."""
+    print(json.dumps(event), file=sys.stderr, flush=True)
+
+
 @contextmanager
 def progress_heartbeat(snapshot, interval=15):
     """Keep status visible during slow provider calls without touching model state."""
@@ -13,9 +18,9 @@ def progress_heartbeat(snapshot, interval=15):
 
     def report():
         while not stopped.wait(interval):
-            print(json.dumps(snapshot()), file=sys.stderr, flush=True)
+            log_event(snapshot())
 
-    print(json.dumps(snapshot()), file=sys.stderr, flush=True)
+    log_event(snapshot())
     thread = Thread(target=report, name='run-progress', daemon=True)
     thread.start()
     try:

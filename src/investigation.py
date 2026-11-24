@@ -4,56 +4,57 @@ from __future__ import annotations
 import json
 
 from .evidence import investigation_facts
-from .llm import answer, request_body as structured_request
+from .llm import answer, structured_request
+
+MAX_EVIDENCE_IDS = 6
+EVIDENCE_STRENGTHS = ("none", "weak", "moderate", "strong")
+UNATTRIBUTED_FAMILIES = ("UNKNOWN_ATTACK", "INSUFFICIENT_EVIDENCE")
+SELECTION_FIELDS = {"attack_family", "evidence_strength", "supporting_ids",
+                    "contradicting_ids", "alternative_family"}
 
 
 def selection_schema(cfg: dict, facts: dict, dataset: str) -> dict:
     families = list(dict.fromkeys(cfg["family_map"][dataset].values()))
-    ids = {"type": "array", "uniqueItems": True, "maxItems": 6,
+    ids = {"type": "array", "uniqueItems": True, "maxItems": MAX_EVIDENCE_IDS,
            "items": {"type": "string", "enum": list(facts) or ["NO_EVIDENCE"]}}
     properties = {
-        "attack_family": {"type": "string", "enum": [*families,
-                                    "UNKNOWN_ATTACK", "INSUFFICIENT_EVIDENCE"]},
-        "evidence_strength": {"type": "string", "enum": ["none", "weak", "moderate", "strong"]},
+        "attack_family": {"type": "string", "enum": [*families, *UNATTRIBUTED_FAMILIES]},
+        "evidence_strength": {"type": "string", "enum": list(EVIDENCE_STRENGTHS)},
         "supporting_ids": ids, "contradicting_ids": ids,
-        "alternative_family": {"type": "string", "enum": [*families,
-                                                                    "benign_explanation"]}}
+        "alternative_family": {"type": "string", "enum": [*families, "benign_explanation"]}}
     return {"type": "object", "additionalProperties": False,
             "properties": properties, "required": list(properties)}
 
 
-def render(selection: dict, facts: dict, cfg: dict, *, dataset: str | None = None) -> dict:
-    # Resolve references against this flow, including when reusing a pattern.
-    # A cached report must never copy another flow's observed numbers.
-    expected = {"attack_family", "evidence_strength", "supporting_ids",
-                "contradicting_ids", "alternative_family"}
-    if not isinstance(selection, dict) or set(selection) != expected:
+def render(selection: dict, facts: dict, cfg: dict, dataset: str) -> dict:
+    """Validate a selection and resolve its evidence IDs against this flow's facts.
+
+    A cached report must never copy another flow's observed numbers.
+    """
+    if not isinstance(selection, dict) or set(selection) != SELECTION_FIELDS:
         raise ValueError("invalid_selection_fields")
-    families = (set(cfg["family_map"][dataset].values()) if dataset is not None
-                else set(cfg["attack_knowledge"]["families"]))
+    families = set(cfg["family_map"][dataset].values())
+    catalogue = cfg["attack_knowledge"]["families"]
     family = selection["attack_family"]
     alternative = selection["alternative_family"]
-    if not isinstance(family, str) or family not in families | {"UNKNOWN_ATTACK", "INSUFFICIENT_EVIDENCE"}:
+    if not isinstance(family, str) or family not in families | set(UNATTRIBUTED_FAMILIES):
         raise ValueError("unknown_family")
     if not isinstance(alternative, str) or alternative not in families | {"benign_explanation"}:
         raise ValueError("unknown_alternative_family")
     support, contrary = selection["supporting_ids"], selection["contradicting_ids"]
     if (not isinstance(support, list) or not isinstance(contrary, list) or
-            len(support) > 6 or len(contrary) > 6 or
+            len(support) > MAX_EVIDENCE_IDS or len(contrary) > MAX_EVIDENCE_IDS or
             any(not isinstance(key, str) or key not in facts for key in support + contrary)):
         raise ValueError("unavailable_evidence_reference")
     if (len(set(support)) != len(support) or len(set(contrary)) != len(contrary) or
             set(support) & set(contrary)):
         raise ValueError("contradictory_evidence_references")
-    family = selection["attack_family"]
-    allowed = {*cfg["attack_knowledge"]["families"], "UNKNOWN_ATTACK", "INSUFFICIENT_EVIDENCE"}
-    if family not in allowed:
+    if family not in {*catalogue, *UNATTRIBUTED_FAMILIES}:
         raise ValueError("unknown_family")
     strength = selection["evidence_strength"]
-    if strength not in ("none", "weak", "moderate", "strong"):
+    if strength not in EVIDENCE_STRENGTHS:
         raise ValueError("unknown_evidence_strength")
-    if family in cfg["attack_knowledge"]["families"] and (len(support) < 2 or
-                                                         strength not in ("moderate", "strong")):
+    if family in catalogue and (len(support) < 2 or strength not in ("moderate", "strong")):
         family = "INSUFFICIENT_EVIDENCE"
 
     def observations(keys):
@@ -61,13 +62,12 @@ def render(selection: dict, facts: dict, cfg: dict, *, dataset: str | None = Non
                  "interpretation": facts[key].get("comparison", facts[key]["meaning"])}
                 for key in keys]
 
-    return {"attack_family": family, "evidence_strength": selection["evidence_strength"],
+    return {"attack_family": family, "evidence_strength": strength,
             "supporting_evidence": observations(support),
             "contradicting_evidence": observations(contrary),
-            "alternative_family": selection["alternative_family"],
+            "alternative_family": alternative,
             "missing_evidence": ["packet payloads", "neighboring-flow sequences", "temporal context"],
-            "investigation_summary": f"Controller assessment: {family}; "
-                                      f"evidence strength {selection['evidence_strength']}."}
+            "investigation_summary": f"Controller assessment: {family}; evidence strength {strength}."}
 
 
 def request_body(flow: dict, source: dict, cfg: dict) -> dict:
@@ -99,7 +99,7 @@ def investigate(flow: dict, source: dict, cfg: dict, client, *, fresh: bool = Fa
         return {"report": None, "selection": None, "error": reply["error"]}
     try:
         selection = answer(reply["body"])
-        report = render(selection, investigation_facts(flow, source, cfg), cfg, dataset=flow["dataset"])
+        report = render(selection, investigation_facts(flow, source, cfg), cfg, flow["dataset"])
         return {"report": report, "selection": selection, "error": None}
     except (KeyError, IndexError, TypeError, ValueError):
         return {"report": None, "selection": None, "error": "malformed_investigation_response"}

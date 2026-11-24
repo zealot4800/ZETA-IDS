@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-import sys
 import time
 
 import numpy as np
@@ -17,6 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from .common import (VectorLibrary, admission_confidence, class_diverse,
                      condition_body, text, verify_conditions)
 from .recovery import journal
+from ..reporting import log_event
 from ..results import optional_log
 
 
@@ -38,11 +38,11 @@ class TrainingProxyTools:
             rng = np.random.default_rng(self.seed)
             unique = rng.permutation(np.unique(self.groups))
             assignments = {key: i % 2 for i, key in enumerate(unique)}
-            self.folds = np.asarray([assignments[key] for key in self.groups])
+            folds = np.asarray([assignments[key] for key in self.groups])
             self.group_fold = assignments
             self.models = {}
             for fold in (0, 1):
-                mask = self.folds != fold
+                mask = folds != fold
                 if not mask.any() or len(np.unique(self.labels[mask])) < 2:
                     self.models[fold] = None
                     continue
@@ -70,9 +70,8 @@ class ExperienceIDS:
         self.method, self.reasoner, self.embedder = method, reasoner, embedder
         self.options, self.library = options, VectorLibrary()
         self.training, self.labels = training, labels
-        print(json.dumps({'event': 'baseline_phase', 'method': method,
-                          'phase': 'embedding_training_flows', 'flows': len(training)}),
-              file=sys.stderr, flush=True)
+        log_event({'event': 'baseline_phase', 'method': method,
+                   'phase': 'embedding_training_flows', 'flows': len(training)})
         self.vectors = embedder.encode([text(flow) for flow in training])
         numeric = pd.DataFrame(training).select_dtypes(include='number')
         self.medians = numeric.median().fillna(0).to_dict()
@@ -108,14 +107,54 @@ class ExperienceIDS:
             self.construction['misclassified'] += (
                 'label' in event and event['label'] != event['true_label'])
             if 'rule' in event:
-                if event['admitted']:
-                    key = (self.vectors[index] if self.method == 'ma_ids' else
-                           self.embedder.encode([event['rule']['description']])[0])
-                    self.library.add(key, event['rule'])
-                    self.construction['rules_admitted'] += 1
-                else:
-                    self.queue.append(event['rule'])
-                    self.construction['rules_queued'] += 1
+                self._store_rule(event['rule'], event['admitted'], self.vectors[index])
+
+    def _store_rule(self, entry, admitted, flow_vector):
+        """Add an admitted rule to the library, or queue it for review."""
+        if admitted:
+            key = (flow_vector if self.method == 'ma_ids' else
+                   self.embedder.encode([entry['description']])[0])
+            self.library.add(key, entry)
+            self.construction['rules_admitted'] += 1
+        else:
+            self.queue.append(entry)
+            self.construction['rules_queued'] += 1
+
+    def _learn_from_flow(self, index, flow, label, vector):
+        """Classify one training flow and derive a rule if the prediction is wrong."""
+        context = self.context(flow, vector)
+        event = {'construction_index': index, 'true_label': label}
+        stage = 'classification'
+        try:
+            prediction = self.reasoner.classify(flow, context)
+            event.update(prediction)
+            if prediction['label'] != label:
+                self.construction['misclassified'] += 1
+                stage = 'error_analysis'
+                description = self.reasoner.explain_error(flow, prediction['label'], label, context)
+                entry = {'label': label, 'description': description,
+                         'provenance': {'construction_index': index,
+                                        'confused_class': prediction['label'],
+                                        'phase': 'bootstrap_construction'}}
+                admit = True
+                stage = 'rule_admission'
+                if self.method == 'sera_ids':
+                    entry['conditions'] = condition_body(flow, self.medians)
+                    signals = self.tools.score(self.values[index], label, self.groups[index])
+                    confidence = admission_confidence(signals, self.options['signal_threshold'])
+                    entry['provenance'].update(confidence_backend='training_proxy',
+                                               signals=signals, confidence=confidence)
+                    admit = confidence >= self.options['admission_threshold']
+                self._store_rule(entry, admit, vector)
+                event.update(rule=entry, admitted=admit)
+        except (ValueError, KeyError, TypeError, IndexError) as exc:
+            self.construction['errors'] += 1
+            event['error'] = str(exc)
+            event['error_stage'] = stage
+            self._record_error(event)
+            log_event({'event': 'construction_error', 'method': self.method,
+                       **self.last_construction_error})
+        return event
 
     def fit(self, directory, progress=None):
         # Streaming journal retains construction failures and rules for audit.
@@ -126,52 +165,13 @@ class ExperienceIDS:
         consecutive_errors = 0
         if progress:
             progress()
-        print(json.dumps({'event': 'construction_restored', 'method': self.method,
-                          'requested': len(self.training), **self.construction}),
-              file=sys.stderr, flush=True)
+        log_event({'event': 'construction_restored', 'method': self.method,
+                   'requested': len(self.training), **self.construction})
         with optional_log(directory / 'construction.jsonl' if directory else None) as output:
             for index, (flow, label, vector) in enumerate(zip(self.training, self.labels, self.vectors)):
                 if index < restored:
                     continue
-                context = self.context(flow, vector)
-                event = {'construction_index': index, 'true_label': label}
-                stage = 'classification'
-                try:
-                    prediction = self.reasoner.classify(flow, context)
-                    event.update(prediction)
-                    if prediction['label'] != label:
-                        self.construction['misclassified'] += 1
-                        stage = 'error_analysis'
-                        description = self.reasoner.explain_error(flow, prediction['label'], label, context)
-                        entry = {'label': label, 'description': description,
-                                 'provenance': {'construction_index': index,
-                                                'confused_class': prediction['label'],
-                                                'phase': 'bootstrap_construction'}}
-                        admit = True
-                        stage = 'rule_admission'
-                        if self.method == 'sera_ids':
-                            entry['conditions'] = condition_body(flow, self.medians)
-                            signals = self.tools.score(self.values[index], label, self.groups[index])
-                            confidence = admission_confidence(signals, self.options['signal_threshold'])
-                            entry['provenance'].update(confidence_backend='training_proxy',
-                                                       signals=signals, confidence=confidence)
-                            admit = confidence >= self.options['admission_threshold']
-                        if admit:
-                            key = (vector if self.method == 'ma_ids' else
-                                   self.embedder.encode([description])[0])
-                            self.library.add(key, entry)
-                            self.construction['rules_admitted'] += 1
-                        else:
-                            self.queue.append(entry)
-                            self.construction['rules_queued'] += 1
-                        event.update(rule=entry, admitted=admit)
-                except (ValueError, KeyError, TypeError, IndexError) as exc:
-                    self.construction['errors'] += 1
-                    event['error'] = str(exc)
-                    event['error_stage'] = stage
-                    self._record_error(event)
-                    print(json.dumps({'event': 'construction_error', 'method': self.method,
-                                      **self.last_construction_error}), file=sys.stderr, flush=True)
+                event = self._learn_from_flow(index, flow, label, vector)
                 consecutive_errors = consecutive_errors + 1 if event.get('error') else 0
                 self.construction['processed'] += 1
                 if output:
@@ -180,24 +180,23 @@ class ExperienceIDS:
                 now = time.monotonic()
                 if (self.construction['processed'] == 1 or self.construction['processed'] % 100 == 0
                         or self.construction['processed'] == len(self.training) or now - last_progress >= 30):
-                    print(json.dumps({'event': 'construction_progress', 'method': self.method,
-                                      'elapsed_seconds': round(now - started, 1),
-                                      'eta_seconds': round((now - started) / (self.construction['processed'] - restored)
-                                                           * (len(self.training) - self.construction['processed'])),
-                                      'requested': len(self.training), **self.construction}),
-                          file=sys.stderr, flush=True)
+                    log_event({'event': 'construction_progress', 'method': self.method,
+                               'elapsed_seconds': round(now - started, 1),
+                               'eta_seconds': round((now - started) / (self.construction['processed'] - restored)
+                                                    * (len(self.training) - self.construction['processed'])),
+                               'requested': len(self.training), **self.construction})
                     if progress:
                         progress()
                     last_progress = now
                 if consecutive_errors >= 3:
                     raise RuntimeError('Three consecutive construction calls failed; '
-                                       f'last error at {stage}: {event["error"]}. '
+                                       f'last error at {event["error_stage"]}: {event["error"]}. '
                                        'See method_statistics.construction_error_types in the summary. '
                                        '--save-details enables recoverable journals.')
         self.library.frozen = True
 
-    def predict(self, flow, vector=None):
-        vector = self.embedder.encode([text(flow)])[0] if vector is None else vector
+    def predict(self, flow):
+        vector = self.embedder.encode([text(flow)])[0]
         context = self.context(flow, vector)
         result = self.reasoner.classify(flow, context)
         return {**result, 'retrieved_rules': len(context), 'context': context}

@@ -3,12 +3,12 @@ from __future__ import annotations
 
 from collections import Counter, OrderedDict
 import json
-import sys
 import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from .evidence import digest
+from .reporting import log_event
 
 
 def answer(body: dict) -> dict:
@@ -74,15 +74,14 @@ class Ollama:
             finally:
                 self.active_request = None
             retrying = retryable and attempt < retries
-            print(json.dumps({"event": "llm_request_failed", "stage": stage,
-                              "attempt": attempt + 1, "error": error,
-                              "retrying": retrying}), file=sys.stderr, flush=True)
+            log_event({"event": "llm_request_failed", "stage": stage,
+                       "attempt": attempt + 1, "error": error, "retrying": retrying})
             if not retrying:
                 return {"body": None, "error": error}
             time.sleep(options["retry_backoff_seconds"] * 2 ** attempt)
 
 
-def request_body(options: dict, messages: list[dict], name: str, schema: dict) -> dict:
+def structured_request(options: dict, messages: list[dict], name: str, schema: dict) -> dict:
     return {"model": options["model"], "messages": messages,
             "temperature": options["temperature"], "max_tokens": options["max_tokens"],
             "reasoning_effort": options["reasoning_effort"], "stream": False,

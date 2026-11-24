@@ -7,3 +7,6 @@ __pycache__/
 results/
 config/*.ollama
 paper/*
+oldPapers/*
+p4/*
+.vscode/*

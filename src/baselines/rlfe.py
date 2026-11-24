@@ -1,14 +1,13 @@
 """FE-Net prototype training and causal predicted-label retrieval updates."""
 from __future__ import annotations
 
-import json
-import sys
 import numpy as np
 import torch
 from torch import nn
 from scipy.linalg import pinvh
 
 from .common import VectorLibrary
+from ..reporting import log_event
 
 
 class FENet(nn.Module):
@@ -45,10 +44,9 @@ class RLFEIDS:
         self.classes = sorted(set(labels))
         self.targets = torch.tensor([self.classes.index(label) for label in labels])
         self.model, self.library = FENet().to(self.device), VectorLibrary()
-        print(json.dumps({'event': 'compute_device', 'method': 'rlfe_ids',
-                          'device': str(self.device),
-                          'name': torch.cuda.get_device_name(self.device)
-                          if self.device.type == 'cuda' else 'CPU'}), file=sys.stderr, flush=True)
+        log_event({'event': 'compute_device', 'method': 'rlfe_ids', 'device': str(self.device),
+                   'name': torch.cuda.get_device_name(self.device)
+                   if self.device.type == 'cuda' else 'CPU'})
         self.rng = np.random.default_rng(seed)
         self.updates = 0
         self.precision = None
@@ -59,7 +57,7 @@ class RLFEIDS:
             return torch.cat([self.model(batch.to(self.device)).cpu() for batch in
                               torch.as_tensor(values).split(self.options['batch_size'])]).numpy()
 
-    def fit(self, directory):
+    def fit(self):
         optimizer = torch.optim.SGD(self.model.parameters(), lr=self.options['learning_rate'])
         for epoch in range(self.options['epochs']):
             self.model.train()
@@ -80,9 +78,9 @@ class RLFEIDS:
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-            print(json.dumps({'event': 'training_progress', 'method': 'rlfe_ids',
-                              'epoch': epoch + 1, 'epochs': self.options['epochs'],
-                              'last_batch_loss': float(loss.detach())}), file=sys.stderr, flush=True)
+            log_event({'event': 'training_progress', 'method': 'rlfe_ids',
+                       'epoch': epoch + 1, 'epochs': self.options['epochs'],
+                       'last_batch_loss': float(loss.detach())})
         embedded = self.encode(self.values.numpy())
         if self.options['distance'] == 'mahalanobis':
             covariance = np.cov(embedded, rowvar=False) if len(embedded) > 1 else np.eye(1024)

@@ -29,9 +29,9 @@ def load_dataset(name: str, spec: dict, cfg: dict, root: Path) -> dict:
     excluded = labels | set(spec["exclude"]) | set(cfg["evidence"]["forbidden_features"])
     candidates = (frame.attrs["feature_names"] if spec["feature_source"] == "metadata"
                   else frame.columns)
-    names = [name for name in candidates if name not in excluded]
+    names = [column for column in candidates if column not in excluded]
     categorical = list(spec["categorical"])
-    numeric = [name for name in names if name not in categorical]
+    numeric = [column for column in names if column not in categorical]
     raw = frame[names].copy()
     x = raw.copy()
     for column in numeric:

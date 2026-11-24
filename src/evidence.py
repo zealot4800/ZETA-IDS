@@ -27,6 +27,15 @@ def digest(value) -> str:
                                     separators=(",", ":")).encode()).hexdigest()
 
 
+def file_sha256(path) -> str:
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def flow_id(dataset: str, row_position) -> str:
+    return digest([dataset, int(row_position)])
+
+
 def feature_batch(frame: pd.DataFrame, positions):
     """Extract native columns once, then serialize Python row tuples."""
     names = list(frame.columns)
@@ -34,9 +43,9 @@ def feature_batch(frame: pd.DataFrame, positions):
             for row in frame.iloc[positions].itertuples(index=False, name=None)]
 
 
-def build_source(data: dict, train: np.ndarray, cfg: dict) -> dict:
+def build_source(data: dict, cfg: dict) -> dict:
     raw = data["raw_x"]
-    baseline_rows = raw.loc[train & (data["y"] == 0)]
+    baseline_rows = raw.loc[data["train"] & (data["y"] == 0)]
     options = cfg["evidence"]
     statistics = {}
     for name in raw.columns:
@@ -55,7 +64,7 @@ def build_source(data: dict, train: np.ndarray, cfg: dict) -> dict:
             "missing_feature_handling": options["missing_feature_handling"]}
 
 
-def flow_records(data: dict, dataplane, positions, batch_size: int = 256, support=None):
+def flow_records(data: dict, dataplane, positions, support, batch_size: int = 256):
     """Stream preprocessed positions without per-flow pandas indexing."""
     positions = np.asarray(positions, dtype=int)
     raw_values = data["raw_x"].to_numpy(dtype=object)
@@ -64,23 +73,22 @@ def flow_records(data: dict, dataplane, positions, batch_size: int = 256, suppor
         batch = positions[start:start + batch_size]
         decisions, families, leaves, probabilities = dataplane.predict(batch)
         contexts = [None] * len(batch)
-        if support is not None:
-            advice = dataplane.support_probabilities[batch]
-            # A strong second-model contradiction punts a formerly confident
-            # tree match to the controller, including rare attacks in benign leaves.
-            conflict = (((decisions == "BENIGN") & (advice >= support.options["attack_min_probability"])) |
-                        ((decisions == "ATTACK") & (advice <= support.options["benign_max_probability"])))
-            decisions[conflict] = "UNRESOLVED"
-            deferred = np.flatnonzero(decisions == "UNRESOLVED")
-            if len(deferred):
-                prepared = support.contexts(batch[deferred], leaves[deferred], advice[deferred])
-                for offset, context in zip(deferred, prepared):
-                    contexts[int(offset)] = context
+        advice = dataplane.support_probabilities[batch]
+        # A strong second-model contradiction punts a formerly confident
+        # tree match to the controller, including rare attacks in benign leaves.
+        conflict = (((decisions == "BENIGN") & (advice >= support.options["attack_min_probability"])) |
+                    ((decisions == "ATTACK") & (advice <= support.options["benign_max_probability"])))
+        decisions[conflict] = "UNRESOLVED"
+        deferred = np.flatnonzero(decisions == "UNRESOLVED")
+        if len(deferred):
+            prepared = support.contexts(batch[deferred], leaves[deferred], advice[deferred])
+            for offset, context in zip(deferred, prepared):
+                contexts[int(offset)] = context
         features = [dict(zip(names, (scalar(value) for value in row))) for row in raw_values[batch]]
         for offset, position in enumerate(batch):
             position, leaf = int(position), int(leaves[offset])
             yield {
-                "flow_id": digest([data["name"], int(data["row_positions"][position])]),
+                "flow_id": flow_id(data["name"], data["row_positions"][position]),
                 "dataset": data["name"],
                 "features": features[offset],
                 "controller_context": contexts[offset],

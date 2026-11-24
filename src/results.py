@@ -8,6 +8,10 @@ from pathlib import Path
 import tempfile
 
 
+def new_run_id():
+    return datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
+
+
 @contextmanager
 def optional_log(path):
     """Avoid serializing flow records unless detailed output was requested."""
@@ -60,7 +64,6 @@ def update_results(directory, summary):
         atomic_json(path, report)
     finally:
         os.close(descriptor)
-    return path
 
 
 def print_result(summary):

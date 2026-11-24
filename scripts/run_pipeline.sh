@@ -32,6 +32,13 @@ Optional method groups: 'baselines' runs four baselines; 'all' includes AEGIS.
 USAGE
 }
 
+require_value() {
+    if (($# < 2)) || [[ "$2" == --* ]]; then
+        echo "Missing value for $1" >&2
+        exit 2
+    fi
+}
+
 method="aegis"
 dataset=""
 options=()
@@ -40,10 +47,7 @@ custom_config=false
 while (($#)); do
     case "$1" in
         --method|--dataset)
-            if (($# < 2)) || [[ "$2" == --* ]]; then
-                echo "Missing value for $1" >&2
-                exit 2
-            fi
+            require_value "$@"
             if [[ "$1" == --method ]]; then method="$2"; else dataset="$2"; fi
             shift 2
             ;;
@@ -51,10 +55,7 @@ while (($#)); do
         --dataset=*) dataset="${1#*=}"; shift ;;
         --help|-h) usage; exit 0 ;;
         --construction-flows|--epochs|--task|--resume-from)
-            if (($# < 2)) || [[ "$2" == --* ]]; then
-                echo "Missing value for $1" >&2
-                exit 2
-            fi
+            require_value "$@"
             baseline_only=true
             options+=("$1" "$2")
             shift 2

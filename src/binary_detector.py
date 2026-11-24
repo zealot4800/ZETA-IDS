@@ -4,21 +4,26 @@ from __future__ import annotations
 import json
 import math
 
-from .llm import answer, request_body as structured_request
+from .llm import answer, structured_request
 
 
 def request_body(flow: dict, source: dict, cfg: dict) -> dict:
     prompts = cfg["prompts"]["binary_llm"]
-    instructions = "\n\n".join(prompts[key] for key in
-                                 ("task", "features", "source_examples", "question"))
+    # Opt-in ablation: a "blind" prompt omits the source examples and the
+    # source-support block (decision, ensemble score, neighbour agreement).
+    blind = cfg["binary_llm"].get("blind_prompt", False)
+    sections = ("task", "features", "question") if blind else ("task", "features", "source_examples", "question")
+    instructions = "\n\n".join(prompts[key] for key in sections)
+    context = flow.get("controller_context") or {}
+    # Key order is kept identical to the original prompt in the default mode.
     state = {"feature_names": source["feature_names"],
-             "flow_under_test": flow["features"],
-             "source_examples": (flow.get("controller_context") or {}).get("source_examples", []),
-             "source_support": {key: value for key, value in
-                                (flow.get("controller_context") or {}).items()
-                                if key != "source_examples"},
-             "limitations": source["limitations"],
-             "missing_feature_handling": source["missing_feature_handling"]}
+             "flow_under_test": flow["features"]}
+    if not blind:
+        state["source_examples"] = context.get("source_examples", [])
+        state["source_support"] = {key: value for key, value in context.items()
+                                   if key != "source_examples"}
+    state["limitations"] = source["limitations"]
+    state["missing_feature_handling"] = source["missing_feature_handling"]
     schema = {"type": "object", "additionalProperties": False,
               "properties": {"p_attack": {"type": "number", "minimum": 0, "maximum": 1}},
               "required": ["p_attack"]}

@@ -96,12 +96,11 @@ class AdaptiveMemory:
                 selection: dict | None) -> dict:
         pattern_id, signature = self.signature(flow)
         row = self._row(pattern_id)
-        strong = (p_attack is not None and
-                  ((decision == "ATTACK" and p_attack >= self.options["attack_min_probability"]) or
-                   (decision == "BENIGN" and p_attack <= self.options["benign_max_probability"])))
         support = flow.get("controller_context") or {}
         corroborated = support.get("supported", False) and support.get("decision") == decision
-        strong = strong and corroborated
+        strong = (corroborated and p_attack is not None and
+                  ((decision == "ATTACK" and p_attack >= self.options["attack_min_probability"]) or
+                   (decision == "BENIGN" and p_attack <= self.options["benign_max_probability"])))
         observations = row["observations"] if row else 0
         agreements = row["agreements"] if row else 0
         disagreements = row["disagreements"] if row else 0
@@ -127,15 +126,14 @@ class AdaptiveMemory:
             probability_sum += p_attack
             if strong and decision == learned:
                 agreements += 1
-            elif learned is not None:
+            else:
                 disagreements += 1
         agreement = agreements / max(observations, 1)
         required = self.options["min_observations"][learned or "ATTACK"]
         if (contradiction or (row and row["status"] == "demoted") or
                 disagreements >= self.options["max_disagreements"]):
             status = "demoted"
-        elif (not contradiction and learned is not None and
-              agreements >= required and
+        elif (learned is not None and agreements >= required and
               agreement >= self.options["min_agreement"]):
             status = "provisional"
         else:
